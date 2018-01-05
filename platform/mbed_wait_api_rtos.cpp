@@ -33,7 +33,11 @@ void wait_ms(int ms) {
 }
 
 void wait_us(int us) {
+#if DEVICE_LOWPOWERTIMER
+    const ticker_data_t *const ticker = get_lp_ticker_data();
+#else
     const ticker_data_t *const ticker = get_us_ticker_data();
+#endif
 
     uint32_t start = ticker_read(ticker);
     // Use the RTOS to wait for millisecond delays if possible

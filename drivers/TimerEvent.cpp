@@ -19,10 +19,17 @@
 #include <stddef.h>
 #include "hal/ticker_api.h"
 #include "hal/us_ticker_api.h"
+#include "hal/lp_ticker_api.h"
 
 namespace mbed {
 
-TimerEvent::TimerEvent() : event(), _ticker_data(get_us_ticker_data()) {
+TimerEvent::TimerEvent() : event(),
+#if DEVICE_LOWPOWERTIMER
+	_ticker_data(get_lp_ticker_data())
+#else
+	_ticker_data(get_us_ticker_data())
+#endif
+{
     ticker_set_handler(_ticker_data, (&TimerEvent::irq));
 }
 

@@ -67,6 +67,9 @@ class Ticker : public TimerEvent, private NonCopyable<Ticker> {
 
 public:
     Ticker() : TimerEvent(), _function(0), _lock_deepsleep(true) {
+#if DEVICE_LOWPOWERTIMER
+        _lock_deepsleep = (_ticker_data != get_lp_ticker_data()); // _ticker_data is get_lp_ticker_data()
+#endif
     }
 
     // When low power ticker is in use, then do not disable deep-sleep.
