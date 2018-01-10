@@ -658,10 +658,10 @@ void FATFileSystem::dir_seek(fs_dir_t dir, off_t offset) {
 
     lock();
 
-    if (offset < dh->dptr) {
+    if (offset < (int64_t)((uint64_t)dh->dptr)) {
         f_rewinddir(dh);
     }
-    while (dh->dptr < offset) {
+    while ((int64_t)((uint64_t)dh->dptr) < offset) {
         FILINFO finfo;
         FRESULT res;
 
