@@ -21,13 +21,19 @@
 
 namespace mbed {
 
+Timer::Timer() : _running(), _start(), _time(), _lock_deepsleep(true),
 #if DEVICE_LOWPOWERTIMER
-Timer::Timer() : Timer(get_lp_ticker_data()) {}
+    _ticker_data(get_lp_ticker_data())
 #else
-Timer::Timer() : Timer(get_us_ticker_data()) {}
+    _ticker_data(get_us_ticker_data())
 #endif
+{
+#if DEVICE_LOWPOWERTIMER
+    _lock_deepsleep = (_ticker_data != get_lp_ticker_data());
+#endif
+}
 
-Timer::Timer(const ticker_data_t *data) : _running(), _start(), _time(), _ticker_data(data), _lock_deepsleep(true) {
+Timer::Timer(const ticker_data_t *data) : _running(), _start(), _time(), _lock_deepsleep(true), _ticker_data(data) {
     reset();
 #if DEVICE_LOWPOWERTIMER
     _lock_deepsleep = (data != get_lp_ticker_data());

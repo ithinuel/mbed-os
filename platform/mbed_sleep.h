@@ -104,7 +104,7 @@ bool sleep_manager_can_deep_sleep(void);
  * to be active for debug modes.
  *
  */
-void sleep_manager_sleep_auto(void);
+bool sleep_manager_sleep_auto(void);
 
 /** Send the microcontroller to sleep
  *
@@ -128,12 +128,12 @@ void sleep_manager_sleep_auto(void);
  * Flash re-programming and the USB serial port will remain active, but the mbed program will no longer be
  * able to access the LocalFileSystem
  */
-__INLINE static void sleep(void)
+__INLINE static bool sleep(void)
 {
 #if !(defined(FEATURE_UVISOR) && defined(TARGET_UVISOR_SUPPORTED))
 #if DEVICE_SLEEP
 #if (MBED_CONF_RTOS_PRESENT == 0) || (DEVICE_STCLK_OFF_DURING_SLEEP == 0) || defined(MBED_TICKLESS)
-    sleep_manager_sleep_auto();
+    return sleep_manager_sleep_auto();
 #endif /* (MBED_CONF_RTOS_PRESENT == 0) || (DEVICE_STCLK_OFF_DURING_SLEEP == 0) || defined(MBED_TICKLESS) */
 #endif /* DEVICE_SLEEP */
 #endif /* !(defined(FEATURE_UVISOR) && defined(TARGET_UVISOR_SUPPORTED)) */

@@ -52,20 +52,23 @@ bool sleep_manager_can_deep_sleep(void)
     return deep_sleep_lock == 0 ? true : false;
 }
 
-void sleep_manager_sleep_auto(void)
+bool sleep_manager_sleep_auto(void)
 {
+    bool ret = false;
     core_util_critical_section_enter();
 // debug profile should keep debuggers attached, no deep sleep allowed
 #ifdef MBED_DEBUG
     hal_sleep();
 #else
-    if (sleep_manager_can_deep_sleep()) {
+    ret = sleep_manager_can_deep_sleep();
+    if (ret) {
         hal_deepsleep();
     } else {
         hal_sleep();
     }
 #endif
     core_util_critical_section_exit();
+    return ret;
 }
 
 #else
