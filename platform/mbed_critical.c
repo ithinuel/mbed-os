@@ -83,9 +83,7 @@ MBED_WEAK void core_util_critical_section_exit(void)
 
 // FIXME
 #ifndef   FEATURE_UVISOR
-        bool interrupts_disabled = !core_util_are_interrupts_enabled(); /* get the current interrupt disabled state */
-
-        MBED_ASSERT(interrupts_disabled); /* Interrupts must be disabled on invoking an exit from a critical section */
+        MBED_ASSERT(!core_util_are_interrupts_enabled()); /* Interrupts must be disabled on invoking an exit from a critical section */
 #else
 #warning "core_util_critical_section_exit needs fixing to work from unprivileged code"
 #endif /* FEATURE_UVISOR */
