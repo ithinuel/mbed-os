@@ -57,4 +57,13 @@ extern const PinMap PinMap_QSPI_SCLK[];
 extern const PinMap PinMap_QSPI_SSEL[];
 #endif
 
+/************I2S***************/
+extern const PinMap PinMap_SAI_MCLK[];
+extern const PinMap PinMap_SAI_TXSD[];
+extern const PinMap PinMap_SAI_TXBCLK[];
+extern const PinMap PinMap_SAI_TXWCLK[];
+extern const PinMap PinMap_SAI_RXSD[];
+extern const PinMap PinMap_SAI_RXBCLK[];
+extern const PinMap PinMap_SAI_RXWCLK[];
+
 #endif

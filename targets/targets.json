@@ -1797,7 +1797,8 @@
             "SPISLAVE",
             "STDIO_MESSAGES",
             "TRNG",
-            "FLASH"
+            "FLASH",
+            "SAI"
         ],
         "release_versions": ["2", "5"],
         "device_name": "MK66FN2M0xxx18",
