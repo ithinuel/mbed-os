@@ -20,14 +20,11 @@
 #include "hal/serial_api.h"
 
 #ifndef MBED_FAULT_HANDLER_DISABLED
-//Global for populating the context in exception handler
-mbed_fault_context_t mbed_fault_context;
 
-//Structure to capture the context
 void fault_print_init(void);
 void fault_print_str(char *fmtstr, uint32_t *values);
 void hex_to_str(uint32_t value, char *hex_star);
-void print_context_info(void);
+void print_context_info(uint32_t *mbed_fault_context, bool non_fpu_state);
 void print_threads_info(osRtxThread_t *);
 void print_thread(osRtxThread_t *thread);
 void print_register(char *regtag, uint32_t regval);
@@ -37,9 +34,11 @@ extern int stdio_uart_inited;
 extern serial_t stdio_uart;
 #endif
 
+extern osRtxInfo_t osRtxInfo;
+
 //This is a handler function called from Fault handler to print the error information out.
 //This runs in fault context and uses special functions(defined in mbed_rtx_fault_handler.c) to print the information without using C-lib support.
-__NO_RETURN void mbed_fault_handler (uint32_t fault_type, void *mbed_fault_context_in, void *osRtxInfoIn)
+void mbed_fault_handler (uint32_t *mbed_fault_context, bool non_fpu_state, mbed_fault_type_t fault_type)
 {
     fault_print_init();
     fault_print_str("\n++ MbedOS Fault Handler ++\n\nFaultType: ",NULL);
@@ -62,57 +61,81 @@ __NO_RETURN void mbed_fault_handler (uint32_t fault_type, void *mbed_fault_conte
         break;
     }
     fault_print_str("\n\nContext:",NULL);
-    print_context_info();
+    print_context_info(mbed_fault_context, non_fpu_state);
         
     fault_print_str("\n\nThread Info:\nCurrent:",NULL);
-    print_thread(((osRtxInfo_t *)osRtxInfoIn)->thread.run.curr);
+    print_thread(osRtxInfo.thread.run.curr);
   
     fault_print_str("\nNext:",NULL);
-    print_thread(((osRtxInfo_t *)osRtxInfoIn)->thread.run.next);
+    print_thread(osRtxInfo.thread.run.next);
     
     fault_print_str("\nWait Threads:",NULL);
-    osRtxThread_t *threads = ((osRtxInfo_t *)osRtxInfoIn)->thread.wait_list;
+    osRtxThread_t *threads = osRtxInfo.thread.wait_list;
     print_threads_info(threads);
     
     fault_print_str("\nDelay Threads:",NULL);
-    threads = ((osRtxInfo_t *)osRtxInfoIn)->thread.delay_list;
+    threads = osRtxInfo.thread.delay_list;
     print_threads_info(threads);
     
     fault_print_str("\nIdle Thread:",NULL);
-    threads = ((osRtxInfo_t *)osRtxInfoIn)->thread.idle;
+    threads = osRtxInfo.thread.idle;
     print_threads_info(threads);
     
     fault_print_str("\n\n-- MbedOS Fault Handler --\n\n",NULL);
-        
-    /* Just spin here, we have already crashed */
-    for (;;) {}
+#ifdef RELEASE
+    for(;;) ;
+#else
+	/* ping the debugger */
+	__asm("BKPT   #0\n");
+#endif
 }
 
-void print_context_info()
+void print_context_info(uint32_t *mbed_fault_context, bool non_fpu_state)
 {
+    uint32_t sp = (uint32_t)(mbed_fault_context - (!non_fpu_state?36:18));
     //Context Regs
-    fault_print_str( "\nR0   : %" 
-                    "\nR1   : %" 
-                    "\nR2   : %" 
-                    "\nR3   : %" 
-                    "\nR4   : %" 
-                    "\nR5   : %" 
-                    "\nR6   : %" 
-                    "\nR7   : %" 
-                    "\nR8   : %" 
-                    "\nR9   : %" 
-                    "\nR10  : %" 
-                    "\nR11  : %" 
-                    "\nR12  : %" 
-                    "\nSP   : %" 
-                    "\nLR   : %" 
-                    "\nPC   : %" 
-                    "\nxPSR : %" 
-                    "\nPSP  : %" 
-                    "\nMSP  : %", (uint32_t *)&mbed_fault_context);
+    fault_print_str("\nR0   : %10"
+                    "\nR1   : %11"
+                    "\nR2   : %12"
+                    "\nR3   : %13"
+                    "\nR4   : %2"
+                    "\nR5   : %3"
+                    "\nR6   : %4"
+                    "\nR7   : %5"
+                    "\nR8   : %6"
+                    "\nR9   : %7"
+                    "\nR10  : %8"
+                    "\nR11  : %9"
+                    "\nR12  : %14", mbed_fault_context);
+    if (!non_fpu_state) {
+        fault_print_str("\nS0   : %18"
+                        "\nS1   : %19"
+                        "\nS2   : %20"
+                        "\nS3   : %21"
+                        "\nS4   : %22"
+                        "\nS5   : %23"
+                        "\nS6   : %24"
+                        "\nS7   : %25"
+                        "\nS8   : %26"
+                        "\nS9   : %27"
+                        "\nS10  : %28"
+                        "\nS11  : %29"
+                        "\nS12  : %30"
+                        "\nS13  : %31"
+                        "\nS14  : %32"
+                        "\nS15  : %33"
+                        "\nFPSCR: %34", mbed_fault_context);
+    }
+    fault_print_str("\nSP   : %0", &sp);
+    fault_print_str("\nLR   : %15"
+                    "\nPC   : %16"
+                    "\nxPSR : %17"
+                    "\nPSP  : %1"
+                    "\nMSP  : %0", mbed_fault_context);
+                    
                        
     //Capture CPUID to get core/cpu info
-    fault_print_str("\nCPUID: %",(uint32_t *)&SCB->CPUID);
+    fault_print_str("\nCPUID: %0",(uint32_t *)&SCB->CPUID);
     
 #if !defined(TARGET_M0) && !defined(TARGET_M0P)
     //Capture fault information registers to infer the cause of exception
@@ -126,24 +149,23 @@ void print_context_info()
     FSR[4] = SCB->DFSR;
     FSR[5] = SCB->AFSR;
     FSR[6] = SCB->SHCSR;
-    fault_print_str("\nHFSR : %"
-                    "\nMMFSR: %"
-                    "\nBFSR : %"
-                    "\nUFSR : %"
-                    "\nDFSR : %"
-                    "\nAFSR : %"
-                    "\nSHCSR: %",FSR); 
+    fault_print_str("\nHFSR : %0"
+                    "\nMMFSR: %1"
+                    "\nBFSR : %2"
+                    "\nUFSR : %3"
+                    "\nDFSR : %4"
+                    "\nAFSR : %5"
+                    "\nSHCSR: %6",FSR); 
     
     //Print MMFAR only if its valid as indicated by MMFSR
     if(FSR[1] & 0x80) {
-        fault_print_str("\nMMFAR: %",(uint32_t *)&SCB->MMFAR); 
+        fault_print_str("\nMMFAR: %0",(uint32_t *)&SCB->MMFAR); 
     }
     //Print BFAR only if its valid as indicated by BFSR
     if(FSR[2] & 0x80) {
-        fault_print_str("\nBFAR : %",(uint32_t *)&SCB->BFAR); 
+        fault_print_str("\nBFAR : %0",(uint32_t *)&SCB->BFAR); 
     }
-#endif
-    
+#endif    
 }
 
 /* Prints thread info from a list */
@@ -195,10 +217,16 @@ void fault_print_str(char *fmtstr, uint32_t *values)
         
     while(fmtstr[i] != '\0') {
         if(fmtstr[i] == '\n' || fmtstr[i] == '\r') {
-            serial_putc(&stdio_uart, '\r');
+            serial_putc(&stdio_uart, '\n');
         } else {
             if(fmtstr[i]=='%') {
-                hex_to_str(values[vidx++],hex_str);
+                vidx = 0;
+                while (('0' <= fmtstr[i+1]) && (fmtstr[i+1] <= '9')) {
+                    i++;
+                    vidx *= 10;
+                    vidx += (fmtstr[i] - '0');
+                }
+                hex_to_str(values[vidx],hex_str);
                 for(idx=7; idx>=0; idx--) {
                     serial_putc(&stdio_uart, hex_str[idx]);
                 }
