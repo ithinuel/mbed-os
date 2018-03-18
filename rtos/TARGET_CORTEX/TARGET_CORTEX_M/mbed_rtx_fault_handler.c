@@ -82,7 +82,7 @@ void mbed_fault_handler (uint32_t *mbed_fault_context, bool non_fpu_state, mbed_
     print_threads_info(threads);
     
     fault_print_str("\n\n-- MbedOS Fault Handler --\n\n",NULL);
-#ifdef RELEASE
+#ifndef DEBUG
     for(;;) ;
 #else
 	/* ping the debugger */
