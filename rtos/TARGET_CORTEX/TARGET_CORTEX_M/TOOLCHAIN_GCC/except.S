@@ -167,6 +167,8 @@ Fault_Handler_Continue1:
         ADDS     R3,#0x48                 // 16 FP regs + FPCSR + 1 Reserved
 
 Fault_Handler_Continue2:
+        PUSH     {LR}
+
         MOV      R4,R1
         SUBS     R4,#0x10                 // Set the location of SP in ctx
         STR      R3,[R4]                  // Capture the adjusted SP
@@ -182,7 +184,9 @@ Fault_Handler_Continue2:
         LDR      R2,=osRtxInfo
         BLX      R3
 #endif
-        B        .                        // Just in case we come back here   
+        POP      {LR}
+        BX      LR
+//        B        .                        // Just in case we come back here   
         
         .fnend
         .size    Fault_Handler, .-Fault_Handler

@@ -39,7 +39,7 @@ extern serial_t stdio_uart;
 
 //This is a handler function called from Fault handler to print the error information out.
 //This runs in fault context and uses special functions(defined in mbed_rtx_fault_handler.c) to print the information without using C-lib support.
-__NO_RETURN void mbed_fault_handler (uint32_t fault_type, void *mbed_fault_context_in, void *osRtxInfoIn)
+void mbed_fault_handler (uint32_t fault_type, void *mbed_fault_context_in, void *osRtxInfoIn)
 {
     fault_print_init();
     fault_print_str("\n++ MbedOS Fault Handler ++\n\nFaultType: ",NULL);
@@ -85,7 +85,8 @@ __NO_RETURN void mbed_fault_handler (uint32_t fault_type, void *mbed_fault_conte
     fault_print_str("\n\n-- MbedOS Fault Handler --\n\n",NULL);
         
     /* Just spin here, we have already crashed */
-    for (;;) {}
+    //for (;;) {}
+    __asm("BKPT #0\n");
 }
 
 void print_context_info()
