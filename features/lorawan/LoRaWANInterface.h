@@ -19,9 +19,9 @@
 #define LORAWANINTERFACE_H_
 
 #include "platform/Callback.h"
-#include "lorawan/LoRaWANStack.h"
-#include "lorawan/LoRaRadio.h"
-#include "lorawan/LoRaWANBase.h"
+#include "LoRaWANStack.h"
+#include "LoRaRadio.h"
+#include "LoRaWANBase.h"
 
 class LoRaWANInterface: public LoRaWANBase {
 
@@ -34,6 +34,7 @@ public:
      *
      */
     LoRaWANInterface(LoRaRadio& radio);
+
     virtual ~LoRaWANInterface();
 
     /** Initialize the LoRa stack.
@@ -44,7 +45,7 @@ public:
      *
      * @return         0 on success, a negative error code on failure.
      */
-    virtual lorawan_status_t initialize(events::EventQueue *ev_queue) ;
+    virtual lorawan_status_t initialize(events::EventQueue *ev_queue);
 
     /** Connect OTAA or ABP using Mbed-OS config system
      *
@@ -316,7 +317,7 @@ public:
     virtual int16_t send(uint8_t port, const uint8_t* data, uint16_t length,
                          int flags);
 
-    /** Receives a message from the Network Server.
+    /** Receives a message from the Network Server on a specific port.
      *
      * @param port              The application port number. Port numbers 0 and 224
      *                          are reserved, whereas port numbers from 1 to 223
@@ -355,8 +356,31 @@ public:
      *                                  nothing available to read at the moment.
      *                             iv)  A negative error code on failure.
      */
-    virtual int16_t receive(uint8_t port, uint8_t* data, uint16_t length,
-                            int flags);
+    virtual int16_t receive(uint8_t port, uint8_t* data, uint16_t length, int flags);
+
+    /** Receives a message from the Network Server on any port.
+     *
+     * @param data              A pointer to buffer where the received data will be
+     *                          stored.
+     *
+     * @param length            The size of data in bytes
+     *
+     * @param port              Return the number of port to which message was received.
+     *
+     * @param flags             Return flags to determine what type of message was received.
+     *                          MSG_UNCONFIRMED_FLAG = 0x01
+     *                          MSG_CONFIRMED_FLAG = 0x02
+     *                          MSG_MULTICAST_FLAG = 0x04
+     *                          MSG_PROPRIETARY_FLAG = 0x08
+     *
+     * @return                  It could be one of these:
+     *                             i)   0 if there is nothing else to read.
+     *                             ii)  Number of bytes written to user buffer.
+     *                             iii) LORAWAN_STATUS_WOULD_BLOCK if there is
+     *                                  nothing available to read at the moment.
+     *                             iv)  A negative error code on failure.
+     */
+    virtual int16_t receive(uint8_t* data, uint16_t length, uint8_t& port, int& flags);
 
     /** Add application callbacks to the stack.
        *
@@ -428,8 +452,17 @@ public:
        */
     virtual lorawan_status_t add_app_callbacks(lorawan_app_callbacks_t *callbacks);
 
-private:
-    bool _link_check_requested;
+    /** Change device class
+     *
+     * Change current device class.
+     *
+     * @param    device_class   The device class
+     *
+     * @return                  LORAWAN_STATUS_OK on success,
+     *                          LORAWAN_STATUS_UNSUPPORTED is requested class is not supported,
+     *                          or other negative error code if request failed.
+     */
+    virtual lorawan_status_t set_device_class(const device_class_t device_class);
 };
 
 #endif /* LORAWANINTERFACE_H_ */

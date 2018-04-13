@@ -21,6 +21,7 @@ Copyright (c) 2017, Arm Limited and affiliates.
 
 SPDX-License-Identifier: BSD-3-Clause
 */
+
 #include "LoRaMacCommand.h"
 #include "LoRaMac.h"
 
@@ -39,10 +40,10 @@ SPDX-License-Identifier: BSD-3-Clause
 static const uint8_t max_eirp_table[] = { 8, 10, 12, 13, 14, 16, 18, 20, 21, 24, 26, 27, 29, 30, 33, 36 };
 
 
-LoRaMacCommand::LoRaMacCommand(LoRaMac& lora_mac)
-    : _lora_mac(lora_mac)
+LoRaMacCommand::LoRaMacCommand()
 {
     mac_cmd_in_next_tx = false;
+    sticky_mac_cmd = false;
     mac_cmd_buf_idx = 0;
     mac_cmd_buf_idx_to_repeat = 0;
 
@@ -91,7 +92,8 @@ lorawan_status_t LoRaMacCommand::add_mac_command(uint8_t cmd, uint8_t p1,
                 // Status: Datarate ACK, Channel ACK
                 mac_cmd_buffer[mac_cmd_buf_idx++] = p1;
                 // This is a sticky MAC command answer. Setup indication
-                _lora_mac.set_mlme_schedule_ul_indication();
+//                _lora_mac.set_mlme_schedule_ul_indication();
+                sticky_mac_cmd = true;
                 status = LORAWAN_STATUS_OK;
             }
             break;
@@ -118,7 +120,8 @@ lorawan_status_t LoRaMacCommand::add_mac_command(uint8_t cmd, uint8_t p1,
                 mac_cmd_buffer[mac_cmd_buf_idx++] = cmd;
                 // No payload for this answer
                 // This is a sticky MAC command answer. Setup indication
-                _lora_mac.set_mlme_schedule_ul_indication();
+//                _lora_mac.set_mlme_schedule_ul_indication();
+                sticky_mac_cmd = true;
                 status = LORAWAN_STATUS_OK;
             }
             break;
@@ -135,7 +138,8 @@ lorawan_status_t LoRaMacCommand::add_mac_command(uint8_t cmd, uint8_t p1,
                 // Status: Uplink frequency exists, Channel frequency OK
                 mac_cmd_buffer[mac_cmd_buf_idx++] = p1;
                 // This is a sticky MAC command answer. Setup indication
-                _lora_mac.set_mlme_schedule_ul_indication();
+//                _lora_mac.set_mlme_schedule_ul_indication();
+                sticky_mac_cmd = true;
                 status = LORAWAN_STATUS_OK;
             }
             break;
@@ -206,6 +210,7 @@ void LoRaMacCommand::parse_mac_commands_to_repeat()
     } else {
         mac_cmd_in_next_tx = false;
     }
+    mac_cmd_buf_idx_to_repeat = cmd_cnt;
 }
 
 
@@ -216,7 +221,6 @@ void LoRaMacCommand::clear_repeat_buffer()
 
 void LoRaMacCommand::copy_repeat_commands_to_buffer()
 {
-    // Copy the MAC commands which must be re-send into the MAC command buffer
     memcpy(&mac_cmd_buffer[mac_cmd_buf_idx], mac_cmd_buffer_to_repeat, mac_cmd_buf_idx_to_repeat);
     mac_cmd_buf_idx += mac_cmd_buf_idx_to_repeat;
 }
@@ -236,10 +240,18 @@ bool LoRaMacCommand::is_mac_command_in_next_tx() const
     return mac_cmd_in_next_tx;
 }
 
-lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload,
-                                                      uint8_t mac_index,
-                                                      uint8_t commands_size,
-                                                      uint8_t snr,
+void LoRaMacCommand::clear_sticky_mac_cmd()
+{
+    sticky_mac_cmd = false;
+}
+
+bool LoRaMacCommand::has_sticky_mac_cmd() const
+{
+    return sticky_mac_cmd;
+}
+
+lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload, uint8_t mac_index,
+                                                      uint8_t commands_size, uint8_t snr,
                                                       loramac_mlme_confirm_t& mlme_conf,
                                                       lora_mac_system_params_t &mac_sys_params,
                                                       LoRaPHY &lora_phy)
@@ -330,15 +342,12 @@ lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload,
                 // we don't have a mechanism at the moment to measure
                 // battery levels
                 ret_value = add_mac_command(MOTE_MAC_DEV_STATUS_ANS,
-                                            batteryLevel, snr);
+                                            batteryLevel, snr & 0x3F);
                 break;
             }
             case SRV_MAC_NEW_CHANNEL_REQ: {
-                new_channel_req_params_t newChannelReq;
                 channel_params_t chParam;
-
-                newChannelReq.channel_id = payload[mac_index++];
-                newChannelReq.new_channel = &chParam;
+                int8_t channel_id = payload[mac_index++];
 
                 chParam.frequency = (uint32_t) payload[mac_index++];
                 chParam.frequency |= (uint32_t) payload[mac_index++] << 8;
@@ -347,7 +356,7 @@ lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload,
                 chParam.rx1_frequency = 0;
                 chParam.dr_range.value = payload[mac_index++];
 
-                status = lora_phy.request_new_channel(&newChannelReq);
+                status = lora_phy.request_new_channel(channel_id, &chParam);
 
                 ret_value = add_mac_command(MOTE_MAC_NEW_CHANNEL_ANS, status, 0);
             }
@@ -364,44 +373,47 @@ lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload,
             }
                 break;
             case SRV_MAC_TX_PARAM_SETUP_REQ: {
-                tx_param_setup_req_t txParamSetupReq;
                 uint8_t eirpDwellTime = payload[mac_index++];
+                uint8_t ul_dwell_time;
+                uint8_t dl_dwell_time;
+                uint8_t max_eirp;
 
-                txParamSetupReq.ul_dwell_time = 0;
-                txParamSetupReq.dl_dwell_time = 0;
+                ul_dwell_time = 0;
+                dl_dwell_time = 0;
 
                 if ((eirpDwellTime & 0x20) == 0x20) {
-                    txParamSetupReq.dl_dwell_time = 1;
+                    dl_dwell_time = 1;
                 }
                 if ((eirpDwellTime & 0x10) == 0x10) {
-                    txParamSetupReq.ul_dwell_time = 1;
+                    ul_dwell_time = 1;
                 }
-                txParamSetupReq.max_eirp = eirpDwellTime & 0x0F;
+                max_eirp = eirpDwellTime & 0x0F;
 
                 // Check the status for correctness
-                if (lora_phy.accept_tx_param_setup_req(&txParamSetupReq)) {
+                if (lora_phy.accept_tx_param_setup_req(ul_dwell_time, dl_dwell_time)) {
                     // Accept command
                     mac_sys_params.uplink_dwell_time =
-                            txParamSetupReq.ul_dwell_time;
+                            ul_dwell_time;
                     mac_sys_params.downlink_dwell_time =
-                            txParamSetupReq.dl_dwell_time;
+                            dl_dwell_time;
                     mac_sys_params.max_eirp =
-                            max_eirp_table[txParamSetupReq.max_eirp];
+                            max_eirp_table[max_eirp];
                     // Add command response
                     ret_value = add_mac_command(MOTE_MAC_TX_PARAM_SETUP_ANS, 0, 0);
                 }
             }
                 break;
             case SRV_MAC_DL_CHANNEL_REQ: {
-                dl_channel_req_params_t dlChannelReq;
 
-                dlChannelReq.channel_id = payload[mac_index++];
-                dlChannelReq.rx1_frequency = (uint32_t) payload[mac_index++];
-                dlChannelReq.rx1_frequency |= (uint32_t) payload[mac_index++] << 8;
-                dlChannelReq.rx1_frequency |= (uint32_t) payload[mac_index++] << 16;
-                dlChannelReq.rx1_frequency *= 100;
+                uint8_t channel_id = payload[mac_index++];
+                uint32_t rx1_frequency;
 
-                status = lora_phy.dl_channel_request(&dlChannelReq);
+                rx1_frequency = (uint32_t) payload[mac_index++];
+                rx1_frequency |= (uint32_t) payload[mac_index++] << 8;
+                rx1_frequency |= (uint32_t) payload[mac_index++] << 16;
+                rx1_frequency *= 100;
+
+                status = lora_phy.dl_channel_request(channel_id, rx1_frequency);
 
                 ret_value = add_mac_command(MOTE_MAC_DL_CHANNEL_ANS, status, 0);
             }
@@ -417,7 +429,6 @@ lorawan_status_t LoRaMacCommand::process_mac_commands(uint8_t *payload,
 bool LoRaMacCommand::is_sticky_mac_command_pending()
 {
     if (mac_cmd_buf_idx_to_repeat > 0) {
-        // Sticky MAC commands pending
         return true;
     }
     return false;

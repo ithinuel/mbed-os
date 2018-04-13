@@ -35,7 +35,7 @@ import fnmatch
 
 from ..utils import (run_cmd, mkdir, rel_path, ToolException,
                     NotSupportedException, split_path, compile_worker)
-from ..settings import MBED_ORG_USER
+from ..settings import MBED_ORG_USER, PRINT_COMPILER_OUTPUT_AS_LINK
 from .. import hooks
 from ..memap import MemapParser
 
@@ -462,8 +462,13 @@ class mbedToolchain:
 
         elif event['type'] == 'cc':
             event['severity'] = event['severity'].title()
-            event['file'] = basename(event['file'])
-            msg = '[%(severity)s] %(file)s@%(line)s,%(col)s: %(message)s' % event
+
+            if PRINT_COMPILER_OUTPUT_AS_LINK:
+                event['file'] = getcwd() + event['file'].strip('.')
+                msg = '[%(severity)s] %(file)s:%(line)s:%(col)s: %(message)s' % event
+            else:
+                event['file'] = basename(event['file'])
+                msg = '[%(severity)s] %(file)s@%(line)s,%(col)s: %(message)s' % event
 
         elif event['type'] == 'progress':
             if 'percent' in event:
@@ -726,12 +731,13 @@ class mbedToolchain:
     # A helper function for both scan_resources and _add_dir. _add_file adds one file
     # (*file_path*) to the resources object based on the file type.
     def _add_file(self, file_path, resources, base_path, exclude_paths=None):
-        resources.file_basepath[file_path] = base_path
 
-        if self.is_ignored(relpath(file_path, base_path)):
+        if  (self.is_ignored(relpath(file_path, base_path)) or
+             basename(file_path).startswith(".")):
             resources.ignore_dir(relpath(file_path, base_path))
             return
 
+        resources.file_basepath[file_path] = base_path
         _, ext = splitext(file_path)
         ext = ext.lower()
 
