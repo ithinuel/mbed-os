@@ -46,6 +46,11 @@ public:
      */
     virtual bool xfer(uint32_t *value);
 
+    /** Retreive the object status. Allows the ctor to
+     * funnel init errors/warnings back up to the application.
+     */
+    virtual sai_result_t status(void);
+
     /** Acquire exclusive access to this SAI bus
      */
     virtual void lock(void);
@@ -62,6 +67,7 @@ protected:
     sai_t           _sai;
     PlatformMutex   _mutex;
     bool            _is_input;
+    sai_result_t    _status;
 };
 
 class SAITransmitter : private SAI {
@@ -69,6 +75,10 @@ class SAITransmitter : private SAI {
         SAITransmitter(PinName mclk, PinName bclk, PinName wclk, PinName sd,
                        const sai_format_t *fmt = &sai_mode_i2s32)
            : SAI(mclk, bclk, wclk, sd, fmt, false) { }
+
+        sai_result_t status(void) {
+            return this->status();
+        }
 
         bool send(uint32_t sample) {
             return this->xfer(&sample);
@@ -80,6 +90,10 @@ class SAIReceiver : private SAI {
         SAIReceiver(PinName mclk, PinName bclk, PinName wclk, PinName sd,
                     const sai_format_t *fmt = &sai_mode_i2s32)
             : SAI(mclk, bclk, wclk, sd, fmt, true) { }
+
+        sai_result_t status(void) {
+            return this->status();
+        }
 
         bool receive(uint32_t *sample) {
             return this->xfer(sample);

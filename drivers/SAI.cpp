@@ -38,8 +38,11 @@ SAI::SAI(PinName mclk, PinName bclk, PinName wclk, PinName sd,
 
     init.format = *fmt;
 
-    if (sai_init(&_sai, &init) != SAI_RESULT_OK) {
+    _status = sai_init(&_sai, &init);
+
+    if (_status != SAI_RESULT_OK) {
         // it failed :o
+        printf("SAI init failed with: %d\r\n", _status);
     }
 }
 
@@ -48,6 +51,10 @@ bool SAI::xfer(uint32_t *value) {
     bool ret = sai_xfer(&_sai, value);
     unlock();
     return ret;
+}
+
+sai_result_t SAI::status(void) {
+    return _status;
 }
 
 void SAI::lock() {
