@@ -118,7 +118,9 @@ void EasyCellularConnection::set_credentials(const char *apn, const char *uname,
             }
 #endif // #if USE_APN_LOOKUP
         } else {
-            tr_error("NO Network...");
+            //if get_network() returns NULL it means there was not enough memory for 
+            //an AT_CellularNetwork element during CellularConnectionFSM initialization
+            tr_error("There was not enough memory during CellularConnectionFSM initialization");
         }
     }
 }
@@ -199,7 +201,7 @@ nsapi_error_t EasyCellularConnection::connect()
             }
         }
         if (err) {
-            tr_info("APN lookup failed");
+            tr_error("APN lookup failed");
             return err;
         }
     }
@@ -276,6 +278,11 @@ void EasyCellularConnection::modem_debug_on(bool on)
     if (dev) {
         dev->modem_debug_on(on);
     }
+}
+
+void EasyCellularConnection::set_plmn(const char* plmn)
+{
+    _cellularConnectionFSM.set_plmn(plmn);
 }
 
 NetworkStack *EasyCellularConnection::get_stack()
