@@ -19,6 +19,7 @@
 #include "NetworkStack.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "ip6string.h"
 
 
@@ -68,11 +69,12 @@ static void ipv4_from_address(uint8_t *bytes, const char *addr)
     int i = 0;
 
     for (; count < NSAPI_IPv4_BYTES; count++) {
-        unsigned d;
+        unsigned long d;
         // Not using %hh, since it might be missing in newlib-based toolchains.
         // See also: https://git.io/vxiw5
-        int scanned = sscanf(&addr[i], "%u", &d);
-        if (scanned < 1) {
+        char *ptr;
+        d = strtoul(&addr[i], &ptr, 10);
+        if (ptr == &addr[i]) {
             return;
         }
 
