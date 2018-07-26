@@ -25,6 +25,7 @@
 #include "ffconf.h"
 #include "mbed_debug.h"
 #include "mbed_critical.h"
+#include "mbed_mktime.h"
 #include <errno.h>
 
 #include "FATFileSystem.h"
@@ -149,13 +150,14 @@ DWORD get_fattime(void)
 {
     time_t rawtime;
     time(&rawtime);
-    struct tm *ptm = localtime(&rawtime);
-    return (DWORD)(ptm->tm_year - 80) << 25
-           | (DWORD)(ptm->tm_mon + 1  ) << 21
-           | (DWORD)(ptm->tm_mday     ) << 16
-           | (DWORD)(ptm->tm_hour     ) << 11
-           | (DWORD)(ptm->tm_min      ) << 5
-           | (DWORD)(ptm->tm_sec/2    );
+    struct tm ptm;
+    _rtc_localtime(rawtime, &ptm, RTC_4_YEAR_LEAP_YEAR_SUPPORT);
+    return (DWORD)(ptm.tm_year - 80) << 25
+           | (DWORD)(ptm.tm_mon + 1  ) << 21
+           | (DWORD)(ptm.tm_mday     ) << 16
+           | (DWORD)(ptm.tm_hour     ) << 11
+           | (DWORD)(ptm.tm_min      ) << 5
+           | (DWORD)(ptm.tm_sec/2    );
 }
 
 void *ff_memalloc(UINT size)

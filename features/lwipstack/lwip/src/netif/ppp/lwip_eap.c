@@ -314,7 +314,7 @@ static void eap_send_success(ppp_pcb *pcb) {
 static bool
 pncrypt_setkey(int timeoffs)
 {
-	struct tm *tp;
+	struct tm tp;
 	char tbuf[9];
 	SHA1_CTX ctxt;
 	u_char dig[SHA_DIGESTSIZE];
@@ -323,10 +323,10 @@ pncrypt_setkey(int timeoffs)
 	if (pn_secret == NULL)
 		return (0);
 	reftime = time(NULL) + timeoffs;
-	tp = localtime(&reftime);
+    _rtc_localtime(reftime, &tp, RTC_4_YEAR_LEAP_YEAR_SUPPORT);
 	SHA1Init(&ctxt);
 	SHA1Update(&ctxt, pn_secret, strlen(pn_secret));
-	strftime(tbuf, sizeof (tbuf), "%Y%m%d", tp);
+	strftime(tbuf, sizeof (tbuf), "%Y%m%d", &tp);
 	SHA1Update(&ctxt, tbuf, strlen(tbuf));
 	SHA1Final(dig, &ctxt);
 	/* FIXME: if we want to do SRP, we need to find a way to pass the PolarSSL des_context instead of using static memory */

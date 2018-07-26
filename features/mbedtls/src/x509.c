@@ -40,6 +40,7 @@
 #include "mbedtls/x509.h"
 #include "mbedtls/asn1.h"
 #include "mbedtls/oid.h"
+#include "mbed_mktime.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -922,7 +923,7 @@ static int x509_get_current_time( mbedtls_x509_time *now )
 #else
 static int x509_get_current_time( mbedtls_x509_time *now )
 {
-    struct tm *lt;
+    struct tm lt;
     mbedtls_time_t tt;
     int ret = 0;
 
@@ -932,18 +933,17 @@ static int x509_get_current_time( mbedtls_x509_time *now )
 #endif
 
     tt = mbedtls_time( NULL );
-    lt = gmtime( &tt );
 
-    if( lt == NULL )
+    if( _rtc_localtime(tt, &lt, RTC_4_YEAR_LEAP_YEAR_SUPPORT) )
         ret = -1;
     else
     {
-        now->year = lt->tm_year + 1900;
-        now->mon  = lt->tm_mon  + 1;
-        now->day  = lt->tm_mday;
-        now->hour = lt->tm_hour;
-        now->min  = lt->tm_min;
-        now->sec  = lt->tm_sec;
+        now->year = lt.tm_year + 1900;
+        now->mon  = lt.tm_mon  + 1;
+        now->day  = lt.tm_mday;
+        now->hour = lt.tm_hour;
+        now->min  = lt.tm_min;
+        now->sec  = lt.tm_sec;
     }
 
 #if defined(MBEDTLS_THREADING_C)

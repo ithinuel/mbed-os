@@ -913,7 +913,7 @@ int file_write_http_header(FILE *data_file, const char *filename, int file_size,
   if (provide_last_modified) {
     char modbuf[256];
     struct stat stat_data;
-    struct tm* t;
+    struct tm t;
     memset(modbuf, 0, sizeof(modbuf));
     memset(&stat_data, 0, sizeof(stat_data));
     cur_string = modbuf;
@@ -922,12 +922,12 @@ int file_write_http_header(FILE *data_file, const char *filename, int file_size,
        printf("stat(%s) failed with error %d\n", filename, errno);
        exit(-1);
     }
-    t = gmtime(&stat_data.st_mtime);
-    if (t == NULL) {
+
+    if (!_rtc_localtime(stat_data.st_mtime, &t, RTC_4_YEAR_LEAP_YEAR_SUPPORT)) {
        printf("gmtime() failed with error %d\n", errno);
        exit(-1);
     }
-    strftime(&modbuf[15], sizeof(modbuf)-15, "%a, %d %b %Y %H:%M:%S GMT", t);
+    strftime(&modbuf[15], sizeof(modbuf)-15, "%a, %d %b %Y %H:%M:%S GMT", &t);
     cur_len = strlen(cur_string);
     fprintf(data_file, NEWLINE "/* \"%s\"\r\n\" (%d+ bytes) */" NEWLINE, cur_string, cur_len+2);
     written += file_put_ascii(data_file, cur_string, cur_len, &i);
