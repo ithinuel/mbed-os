@@ -709,15 +709,15 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
     if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT;
+        goto fail;
     }
 
     if( len > (size_t) ( end - p ) )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT +
-                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT +
+                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH;
+        goto fail;
     }
     crt_end = p + len;
 
@@ -741,8 +741,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
     if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT + ret );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT + ret;
     }
 
     end = p + len;
@@ -760,14 +759,13 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
         ( ret = mbedtls_x509_get_alg(      &p, end, &crt->sig_oid,
                                             &sig_params1 ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     if( crt->version < 0 || crt->version > 2 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_UNKNOWN_VERSION );
+        ret = MBEDTLS_ERR_X509_UNKNOWN_VERSION;
+        goto fail;
     }
 
     crt->version++;
@@ -776,8 +774,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
                                   &crt->sig_md, &crt->sig_pk,
                                   &crt->sig_opts ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     /*
@@ -788,14 +785,13 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
     if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT + ret );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT + ret;
+        goto fail;
     }
 
     if( ( ret = mbedtls_x509_get_name( &p, p + len, &crt->issuer ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     crt->issuer_raw.len = p - crt->issuer_raw.p;
@@ -809,8 +805,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
     if( ( ret = x509_get_dates( &p, end, &crt->valid_from,
                                          &crt->valid_to ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     /*
@@ -821,14 +816,13 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
     if( ( ret = mbedtls_asn1_get_tag( &p, end, &len,
             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT + ret );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT + ret;
+        goto fail;
     }
 
     if( len && ( ret = mbedtls_x509_get_name( &p, p + len, &crt->subject ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     crt->subject_raw.len = p - crt->subject_raw.p;
@@ -838,8 +832,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
      */
     if( ( ret = mbedtls_pk_parse_subpubkey( &p, end, &crt->pk ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     /*
@@ -855,8 +848,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
         ret = x509_get_uid( &p, end, &crt->issuer_id,  1 );
         if( ret != 0 )
         {
-            mbedtls_x509_crt_free( crt );
-            return( ret );
+            goto fail;
         }
     }
 
@@ -865,8 +857,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
         ret = x509_get_uid( &p, end, &crt->subject_id,  2 );
         if( ret != 0 )
         {
-            mbedtls_x509_crt_free( crt );
-            return( ret );
+            goto fail;
         }
     }
 
@@ -877,16 +868,15 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
         ret = x509_get_crt_ext( &p, end, crt );
         if( ret != 0 )
         {
-            mbedtls_x509_crt_free( crt );
-            return( ret );
+            goto fail;
         }
     }
 
     if( p != end )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT +
-                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+        ret = MBEDTLS_ERR_X509_INVALID_FORMAT +
+                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH;
+        goto fail;
     }
 
     end = crt_end;
@@ -900,8 +890,7 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
      */
     if( ( ret = mbedtls_x509_get_alg( &p, end, &sig_oid2, &sig_params2 ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     if( crt->sig_oid.len != sig_oid2.len ||
@@ -910,24 +899,26 @@ static int x509_crt_parse_der_core( mbedtls_x509_crt *crt, const unsigned char *
         ( sig_params1.len != 0 &&
           memcmp( sig_params1.p, sig_params2.p, sig_params1.len ) != 0 ) )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_SIG_MISMATCH );
+        ret = MBEDTLS_ERR_X509_SIG_MISMATCH;
+        goto fail;
     }
 
     if( ( ret = mbedtls_x509_get_sig( &p, end, &crt->sig ) ) != 0 )
     {
-        mbedtls_x509_crt_free( crt );
-        return( ret );
+        goto fail;
     }
 
     if( p != end )
     {
-        mbedtls_x509_crt_free( crt );
-        return( MBEDTLS_ERR_X509_INVALID_FORMAT +
-                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH );
+        ret= MBEDTLS_ERR_X509_INVALID_FORMAT +
+                MBEDTLS_ERR_ASN1_LENGTH_MISMATCH;
+        goto fail;
     }
 
     return( 0 );
+fail:
+    mbedtls_x509_crt_free( crt );
+    return ret;
 }
 
 /*
