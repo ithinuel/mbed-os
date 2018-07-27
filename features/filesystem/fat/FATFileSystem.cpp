@@ -150,14 +150,14 @@ DWORD get_fattime(void)
 {
     time_t rawtime;
     time(&rawtime);
-    struct tm ptm;
-    _rtc_localtime(rawtime, &ptm, RTC_4_YEAR_LEAP_YEAR_SUPPORT);
-    return (DWORD)(ptm.tm_year - 80) << 25
-           | (DWORD)(ptm.tm_mon + 1  ) << 21
-           | (DWORD)(ptm.tm_mday     ) << 16
-           | (DWORD)(ptm.tm_hour     ) << 11
-           | (DWORD)(ptm.tm_min      ) << 5
-           | (DWORD)(ptm.tm_sec/2    );
+    struct tm tm;
+    _rtc_localtime(rawtime, &tm, RTC_4_YEAR_LEAP_YEAR_SUPPORT);
+    return (DWORD)(tm.tm_year - 80) << 25
+       | (DWORD)(tm.tm_mon + 1  ) << 21
+       | (DWORD)(tm.tm_mday     ) << 16
+       | (DWORD)(tm.tm_hour     ) << 11
+       | (DWORD)(tm.tm_min      ) << 5
+       | (DWORD)(tm.tm_sec/2    );
 }
 
 void *ff_memalloc(UINT size)
