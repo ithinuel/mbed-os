@@ -164,8 +164,8 @@ static void md5_process( md5_context *ctx, const unsigned char data[64] )
 
     for (uint32_t j = 0; j < 4; j++) {
         for (uint32_t i = 0; i < 16; i++) {
-            uint32_t offset = (19 - i)&3;
-            P(t[offset - 3], *t[offset - 2], *t[offset - 1], *t[offset], X, k[j](i)%16, u[j][i%4], v[j][i], f[j]);
+            uint32_t offset = 19 - i;
+            P(t[(offset - 3)&3], *t[(offset - 2)&3], *t[(offset - 1)&3], *t[offset&3], X, k[j](i) & 15, u[j][i&3], v[j][i], f[j]);
         }
     }
 
