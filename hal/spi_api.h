@@ -61,6 +61,7 @@ typedef enum _spi_bit_ordering_t {
 } spi_bit_ordering_t;
 
 typedef struct _spi_async_event_t {
+    // we may want to have flag for errors here
     uint32_t transfered;
 } spi_async_event_t;
 

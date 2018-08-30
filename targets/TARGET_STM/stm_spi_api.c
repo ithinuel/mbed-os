@@ -41,16 +41,10 @@
 #include "PeripheralPins.h"
 #include "spi_device.h"
 
-#if DEVICE_SPI_ASYNCH
-#define SPI_INST(obj)    ((SPI_TypeDef *)(obj->spi.spi))
-#else
 #define SPI_INST(obj)    ((SPI_TypeDef *)(obj->spi))
-#endif
 
 #if DEVICE_SPI_ASYNCH
-#define SPI_S(obj)    (( struct spi_s *)(&(obj->spi)))
-#else
-#define SPI_S(obj)    (( struct spi_s *)(obj))
+static spi_t *spi_instances[SPI_COUNT] = {NULL};
 #endif
 
 #ifndef DEBUG_STDIO
@@ -119,11 +113,14 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     spiobj->spi = (SPIName)pinmap_merge(spi_module, spi_ssel);
     MBED_ASSERT(spiobj->spi != (SPIName)NC);
 
+    uint8_t idx = 0;
 #if defined SPI1_BASE
     // Enable SPI clock
     if (spiobj->spi == SPI_1) {
         __HAL_RCC_SPI1_CLK_ENABLE();
         spiobj->spiIRQ = SPI1_IRQn;
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -131,6 +128,8 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     if (spiobj->spi == SPI_2) {
         __HAL_RCC_SPI2_CLK_ENABLE();
         spiobj->spiIRQ = SPI2_IRQn;
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -138,6 +137,8 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     if (spiobj->spi == SPI_3) {
         __HAL_RCC_SPI3_CLK_ENABLE();
         spiobj->spiIRQ = SPI3_IRQn;
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -145,6 +146,8 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     if (spiobj->spi == SPI_4) {
         __HAL_RCC_SPI4_CLK_ENABLE();
         spiobj->spiIRQ = SPI4_IRQn;
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -152,6 +155,8 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     if (spiobj->spi == SPI_5) {
         __HAL_RCC_SPI5_CLK_ENABLE();
         spiobj->spiIRQ = SPI5_IRQn;
+    } else {
+        idx += 1
     }
 #endif
 
@@ -159,8 +164,13 @@ void spi_init(spi_t *obj, bool is_slave, PinName mosi, PinName miso, PinName scl
     if (spiobj->spi == SPI_6) {
         __HAL_RCC_SPI6_CLK_ENABLE();
         spiobj->spiIRQ = SPI6_IRQn;
+    } else {
+        idx += 1;
     }
 #endif
+
+    MBED_ASSERT(idx < SPI_COUNT);
+    spi_instances[idx] = spiobj;
 
     // Configure the SPI pins
     pinmap_pinout(mosi, PinMap_SPI_MOSI);
@@ -215,19 +225,26 @@ void spi_free(spi_t *obj)
     __HAL_SPI_DISABLE(handle);
     HAL_SPI_DeInit(handle);
 
+    uint8_t idx = 0;
+
 #if defined SPI1_BASE
     // Reset SPI and disable clock
     if (spiobj->spi == SPI_1) {
         __HAL_RCC_SPI1_FORCE_RESET();
         __HAL_RCC_SPI1_RELEASE_RESET();
         __HAL_RCC_SPI1_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
+
 #if defined SPI2_BASE
     if (spiobj->spi == SPI_2) {
         __HAL_RCC_SPI2_FORCE_RESET();
         __HAL_RCC_SPI2_RELEASE_RESET();
         __HAL_RCC_SPI2_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -236,6 +253,8 @@ void spi_free(spi_t *obj)
         __HAL_RCC_SPI3_FORCE_RESET();
         __HAL_RCC_SPI3_RELEASE_RESET();
         __HAL_RCC_SPI3_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -244,6 +263,8 @@ void spi_free(spi_t *obj)
         __HAL_RCC_SPI4_FORCE_RESET();
         __HAL_RCC_SPI4_RELEASE_RESET();
         __HAL_RCC_SPI4_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -252,6 +273,8 @@ void spi_free(spi_t *obj)
         __HAL_RCC_SPI5_FORCE_RESET();
         __HAL_RCC_SPI5_RELEASE_RESET();
         __HAL_RCC_SPI5_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
 
@@ -260,8 +283,12 @@ void spi_free(spi_t *obj)
         __HAL_RCC_SPI6_FORCE_RESET();
         __HAL_RCC_SPI6_RELEASE_RESET();
         __HAL_RCC_SPI6_CLK_DISABLE();
+    } else {
+        idx += 1;
     }
 #endif
+
+    spi_instances[idx] = NULL;
 
     // Configure GPIOs
     pin_function(spiobj->pin_miso, STM_PIN_DATA(STM_MODE_INPUT, GPIO_NOPULL, 0));
@@ -280,7 +307,7 @@ void spi_format(spi_t *obj, uint8_t bits, spi_mode_t mode, spi_bit_ordering_t bi
     DEBUG_PRINTF("spi_format, bits:%d, mode:%d, slave?:%d\r\n", bits, mode, slave);
 
     // Save new values
-    handle->Init.DataSize          = (bits == 16) ? SPI_DATASIZE_16BIT : SPI_DATASIZE_8BIT;
+    handle->Init.DataSize = (bits == 16) ? SPI_DATASIZE_16BIT : SPI_DATASIZE_8BIT;
 
     switch (mode) {
         case 0:
@@ -372,7 +399,7 @@ static uint32_t spi_master_write(spi_t *obj, uint32_t value)
 
     /*  Here we're using LL which means direct registers access
      *  There is no error management, so we may end up looping
-     *  infinitely here in case of faulty device for insatnce,
+     *  infinitely here in case of faulty device for instance,
      *  but this will increase performances significantly
      */
 
@@ -404,11 +431,20 @@ uint32_t spi_transfer(spi_t *obj, const void *tx_buffer, uint32_t tx_length,
     uint32_t i = 0;
     if (handle->Init.Direction == SPI_DIRECTION_2LINES) {
         for (i = 0; i < total; i++) {
-            // FIXME: handle various data size
-            uint32_t out = (i < tx_length) ? ((uint8_t *)tx_buffer)[i] : *(uint8_t *)write_fill;
+            uint32_t out = 0;
+
+            if (handle->Init.DataSize == SPI_DATASIZE_8BIT) {
+                out = (i < tx_length) ? ((uint8_t *)tx_buffer)[i] : *(uint8_t *)write_fill;
+            } else {
+                out = (i < tx_length) ? ((uint16_t *)tx_buffer)[i] : *(uint16_t *)write_fill;
+            }
             uint32_t in = spi_master_write(obj, out);
             if (i < rx_length) {
-                ((uint8_t*)rx_buffer)[i] = (uint8_t)in;
+                if (handle->Init.DataSize == SPI_DATASIZE_8BIT) {
+                    ((uint8_t*)rx_buffer)[i] = (uint8_t)in;
+                } else {
+                    ((uint16_t*)rx_buffer)[i] = (uint16_t)in;
+                }
             }
         }
     } else {
@@ -452,7 +488,7 @@ static int spi_master_start_asynch_transfer(spi_t *obj, transfer_type_t transfer
 
     DEBUG_PRINTF("SPI inst=0x%8X Start: %u, %u\r\n", (int)handle->Instance, transfer_type, length);
 
-    obj->spi.transfer_type = transfer_type;
+    obj->transfer_type = transfer_type;
 
     if (is16bit) {
         words = length / 2;
@@ -515,6 +551,7 @@ void spi_master_transfer(spi_t *obj, const void *tx, size_t tx_length, void *rx,
 
     // don't do anything, if the buffers aren't valid
     if (!use_tx && !use_rx) {
+        // TODO: the handler still needs to get triggered.
         return;
     }
 
@@ -529,7 +566,8 @@ void spi_master_transfer(spi_t *obj, const void *tx, size_t tx_length, void *rx,
     obj->rx_buff.pos = 0;
     obj->rx_buff.width = obj->tx_buff.width;
 
-    obj->spi.event = event;
+    obj->irs_handler = handler;
+    obj->ctx = ctx;
 
     DEBUG_PRINTF("SPI: Transfer: %u, %u\n", tx_length, rx_length);
 
@@ -554,16 +592,53 @@ void spi_master_transfer(spi_t *obj, const void *tx, size_t tx_length, void *rx,
     }
 }
 
-inline uint32_t spi_irq_handler_asynch(spi_t *obj)
+void spi_irq_handler_asynch(void)
 {
     int event = 0;
 
-    // call the CubeF4 handler, this will update the handle
-    HAL_SPI_IRQHandler(&obj->spi.handle);
+    // get irq number from register
+    uint8_t active_isr = (SCB->ICSR >> SCB_ICSR_VECACTIVE_Pos) & SCB_ICSR_VECTACTIVE_Msk;
+    uint8_t idx = 0;
+#ifdef SPI1_BASE
+    if (active_isr != SPI1_IRQn) {
+        idx += 1;
+    }
+#endif
+#ifdef SPI2_BASE
+    if (active_isr != SPI2_IRQn) {
+        idx += 1;
+    }
+#endif
+#ifdef SPI3_BASE
+    if (active_isr != SPI3_IRQn) {
+        idx += 1;
+    }
+#endif
+#ifdef SPI4_BASE
+    if (active_isr != SPI4_IRQn) {
+        idx += 1;
+    }
+#endif
+#ifdef SPI5_BASE
+    if (active_isr != SPI5_IRQn) {
+        idx += 1;
+    }
+#endif
+#ifdef SPI6_BASE
+    if (active_isr != SPI6_IRQn) {
+        idx += 1;
+    }
+#endif
+    MBED_ASSERT(idx < SPI_COUNT);
+    spi_t *obj = &spi_isr_handler[idx];
+    MBED_ASSERT(obj != NULL);
 
-    if (obj->spi.handle.State == HAL_SPI_STATE_READY) {
+    // call the CubeF4 handler, this will update the handle
+    HAL_SPI_IRQHandler(&obj->handle);
+
+    if (obj->handle.State == HAL_SPI_STATE_READY) {
         // When HAL SPI is back to READY state, check if there was an error
-        int error = obj->spi.handle.ErrorCode;
+        int error = obj->handle.ErrorCode;
         if (error != HAL_SPI_ERROR_NONE) {
             // something went wrong and the transfer has definitely completed
             event = SPI_EVENT_ERROR | SPI_EVENT_INTERNAL_TRANSFER_COMPLETE;
@@ -576,28 +651,15 @@ inline uint32_t spi_irq_handler_asynch(spi_t *obj)
             // else we're done
             event = SPI_EVENT_COMPLETE | SPI_EVENT_INTERNAL_TRANSFER_COMPLETE;
         }
-        // enable the interrupt
-        NVIC_DisableIRQ(obj->spi.spiIRQ);
-        NVIC_ClearPendingIRQ(obj->spi.spiIRQ);
-    }
+        // disable the interrupt
+        NVIC_DisableIRQ(obj->spiIRQ);
+        NVIC_ClearPendingIRQ(obj->spiIRQ);
 
+        spi_async_event_t event = {
+            .transfered = 1 // compute that
+        };
 
-    return (event & (obj->spi.event | SPI_EVENT_INTERNAL_TRANSFER_COMPLETE));
-}
-
-uint8_t spi_active(spi_t *obj)
-{
-    struct spi_s *spiobj = SPI_S(obj);
-    SPI_HandleTypeDef *handle = &(spiobj->handle);
-    HAL_SPI_StateTypeDef state = HAL_SPI_GetState(handle);
-
-    switch (state) {
-        case HAL_SPI_STATE_RESET:
-        case HAL_SPI_STATE_READY:
-        case HAL_SPI_STATE_ERROR:
-            return 0;
-        default:
-            return 1;
+        obj->isr(obj, obj->ctx, &event);
     }
 }
 

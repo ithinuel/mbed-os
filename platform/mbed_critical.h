@@ -106,7 +106,7 @@ bool core_util_in_critical_section(void);
  *    return old
  * }
  */
-bool core_util_atomic_exchange_bool(volatile bool *ptr, bool value);
+bool core_util_atomic_exchange_bool(volatile bool *ptr, bool desiredValue);
 
 /**
  * Atomic compare and set. It compares the contents of a memory location to a

@@ -77,7 +77,10 @@ struct spi_s {
     PinName pin_sclk;
     PinName pin_ssel;
 #ifdef DEVICE_SPI_ASYNCH
-    uint32_t event;
+    spi_async_handler_f isr;
+    void *ctx;
+    buffer_t tx_buff;
+    buffer_t rx_buff;
     uint8_t transfer_type;
 #endif
 };

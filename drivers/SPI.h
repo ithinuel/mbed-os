@@ -26,7 +26,6 @@
 #include "platform/NonCopyable.h"
 
 #if DEVICE_SPI_ASYNCH
-#include "platform/CThunk.h"
 #include "hal/dma_api.h"
 #include "platform/CircularBuffer.h"
 #include "platform/FunctionPointer.h"
@@ -154,19 +153,22 @@ public:
       *
       * @param data    Default character to be transmitted while read operation
       */
-    void set_default_write_value(char data);
+    void set_default_write_value(uint32_t data);
+
     virtual ~SPI()
     {
     }
 
 protected:
     void acquire(void);
+    void release(void);
 
 private:
     /* Private acquire function without locking/unlocking
      * Implemented in order to avoid duplicate locking and boost performance
      */
     uint32_t _acquire(void);
+    uint32_t _release(void);
 
 #if DEVICE_SPI_ASYNCH
 public:
@@ -188,11 +190,9 @@ public:
     template<typename Type>
     int transfer(const Type *tx_buffer, int tx_length, Type *rx_buffer, int rx_length, const event_callback_t &callback, int event = SPI_EVENT_COMPLETE)
     {
-        if (spi_active(&_spi)) {
-            return queue_transfer(tx_buffer, tx_length, rx_buffer, rx_length, sizeof(Type) * 8, callback, event);
-        }
-        start_transfer(tx_buffer, tx_length, rx_buffer, rx_length, sizeof(Type) * 8, callback, event);
-        return 0;
+        ASSERT(sizeof(Type) > _bits);
+        // the mutex will be unlocked when the last transaction of the queue finishes.
+        return transfer(static_cast<const void *>(tx_buffer), tx_length, static_cast<void *>(rx_buffer), rx_length, sizeof(Type) * 8, callback, event);
     }
 
     /** Abort the on-going SPI transfer, and continue with transfer's in the queue if any.
@@ -218,6 +218,7 @@ protected:
     /** SPI IRQ handler
      *
     */
+    MBED_DEPRECATED_SINCE("mbed-os-5.11", "The IRQ flow changed, please refer to HAL RFC #0: https://github.com/ARMmbed/mbed-os/pull/7671.")
     void irq_handler_asynch(void);
 
     /** Common transfer method
@@ -271,21 +272,14 @@ private:
     /** Unlock deep sleep in case it is locked */
     void unlock_deep_sleep();
 
+    static void _irq_handler(spi_t *spi, void *pthat, spi_async_event_t *event);
 
 #if TRANSACTION_QUEUE_SIZE_SPI
-    /** Start a new transaction
-     *
-     *  @param data Transaction data
-    */
-    void start_transaction(transaction_t *data);
-
-    /** Dequeue a transaction
-     *
-    */
+    /**
+     * Dequeue a transaction
+     */
     void dequeue_transaction();
-    static CircularBuffer<Transaction<SPI>, TRANSACTION_QUEUE_SIZE_SPI> _transaction_buffer;
 #endif // TRANSACTION_QUEUE_SIZE_SPI
-
 #endif // DEVICE_SPI_ASYNCH
 
 protected:
@@ -293,7 +287,14 @@ protected:
         SPIName name;
         spi_t spi;
         PlatformMutex mutex;
+        Semaphore busy;
         SPI *owner = NULL;
+#if DEVICE_SPI_ASYNCH
+        bool is_busy;
+#if TRANSACTION_QUEUE_SIZE_SPI
+        CircularBuffer<Transaction<SPI>, TRANSACTION_QUEUE_SIZE_SPI> transaction_buffer;
+#endif
+#endif
     };
     // holds spi_peripheral_s per peripheral on the device.
     // Drawback: it costs ram size even if the device is not used.
@@ -303,7 +304,7 @@ protected:
     spi_peripheral_s *_self;
 
 #if DEVICE_SPI_ASYNCH
-    CThunk<SPI> _irq;
+    // Async feature related members
     event_callback_t _callback;
     DMAUsage _usage;
     bool _deep_sleep_locked;
@@ -312,6 +313,7 @@ protected:
     // Configuration.
     uint8_t _bits;
     spi_mode_t _mode;
+    bool _fmt_need_update;
     bool _msb_first;
     int _hz;
     uint32_t _write_fill;
