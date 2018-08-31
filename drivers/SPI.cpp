@@ -26,7 +26,7 @@ namespace mbed {
 
 SPI::spi_peripheral_s SPI::_peripherals[SPI_COUNT];
 
-SPI::SPI(PinName mosi, PinName miso, PinName sclk, PinName ssel) :
+SPI::SPI(PinName mosi, PinName miso, PinName sclk, PinName ssel, bool is_slave) :
     _id(),
     _self(),
 #if DEVICE_SPI_ASYNCH
@@ -57,7 +57,7 @@ SPI::SPI(PinName mosi, PinName miso, PinName sclk, PinName ssel) :
     if (_self->name == 0) {
         _self->name = name;
         // XXX: we may want to ensure that it was previously initialized with the same mosi/miso/sclk/ss pins
-        spi_init(&_self->spi, false, mosi, miso, sclk, NC);
+        spi_init(&_self->spi, is_slave, mosi, miso, sclk, NC);
     }
     core_util_critical_section_exit();
 }

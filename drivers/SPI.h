@@ -87,7 +87,7 @@ public:
      *  @param sclk SPI Clock pin
      *  @param ssel SPI chip select pin
      */
-    SPI(PinName mosi, PinName miso, PinName sclk, PinName ssel = NC);
+    SPI(PinName mosi, PinName miso, PinName sclk, PinName ssel = NC, bool is_slave = false);
 
     /** Configure the data transmission format
      *

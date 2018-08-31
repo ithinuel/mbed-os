@@ -53,7 +53,7 @@ namespace mbed {
  * @endcode
  * @ingroup drivers
  */
-class SPISlave : private NonCopyable<SPISlave> {
+class SPISlave : public SPI {
 
 public:
 
@@ -66,29 +66,7 @@ public:
      *  @param sclk SPI Clock pin
      *  @param ssel SPI chip select pin
      */
-    SPISlave(PinName mosi, PinName miso, PinName sclk, PinName ssel);
-
-    /** Configure the data transmission format
-     *
-     *  @param bits Number of bits per SPI frame (4 - 16)
-     *  @param mode Clock polarity and phase mode (0 - 3)
-     *
-     * @code
-     * mode | POL PHA
-     * -----+--------
-     *   0  |  0   0
-     *   1  |  0   1
-     *   2  |  1   0
-     *   3  |  1   1
-     * @endcode
-     */
-    void format(int bits, int mode = 0);
-
-    /** Set the spi bus clock frequency
-     *
-     *  @param hz SCLK frequency in hz (default = 1MHz)
-     */
-    void frequency(int hz = 1000000);
+    SPISlave(PinName mosi, PinName miso, PinName sclk, PinName ssel): SPI(mosi, miso, sclk, ssel) {}
 
     /** Polls the SPI to see if data has been received
      *
@@ -111,13 +89,10 @@ public:
      *  @param value the data to be transmitted next
      */
     void reply(int value);
+private;
 
-protected:
-    spi_t _spi;
-
-    uint8_t _bits;
-    spi_mode_t _mode;
-    uint32_t _hz;
+    bool cache_used;
+    uint32_t cache;
 };
 
 } // namespace mbed

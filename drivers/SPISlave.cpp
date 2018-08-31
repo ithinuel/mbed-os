@@ -30,21 +30,9 @@ SPISlave::SPISlave(PinName mosi, PinName miso, PinName sclk, PinName ssel) :
     spi_frequency(&_spi, _hz);
 }
 
-void SPISlave::format(int bits, int mode)
-{
-    _bits = bits;
-    _mode = (spi_mode_t)mode;
-    spi_format(&_spi, _bits, _mode, SPI_BIT_ORDERING_MSB_FIRST);
-}
-
-void SPISlave::frequency(int hz)
-{
-    _hz = hz;
-    spi_frequency(&_spi, _hz);
-}
-
 int SPISlave::receive(void)
 {
+
     return 0;//(spi_slave_receive(&_spi));
 }
 
