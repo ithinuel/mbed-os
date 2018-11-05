@@ -233,6 +233,13 @@ typedef enum {
     I2C_SCL = D15,
     I2C_SDA = D14,
 
+    SPI_CLK = PTD1,
+    SPI_MASTER_MISO = PTD3,
+    SPI_MASTER_MOSI = PTD2,
+    SPI_SLAVE_MISO = PTD2,
+    SPI_SLAVE_MOSI = PTD3,
+    SPI_CS = PTD0,
+
     A0 = PTB7,
     A1 = PTB6,
     A2 = PTB5,

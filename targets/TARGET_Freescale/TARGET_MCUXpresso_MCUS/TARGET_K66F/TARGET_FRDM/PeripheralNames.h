@@ -126,6 +126,7 @@ typedef enum {
 
 
 #define SPI_COUNT 3
+#define SPI_BASE SPI_0
 typedef enum {
     SPI_0 = 0,
     SPI_1 = 1,
