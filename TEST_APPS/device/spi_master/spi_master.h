@@ -156,7 +156,7 @@ int test_init_master(spi_t * obj, config_test_case_t *config, DigitalOut ** ss)
         **ss = 1;
     }
 
-    dump_config(config);
+    //dump_config(config);
 
     spi_init(obj, false, mosi, miso, SPI_CLK, ss_pin);
 

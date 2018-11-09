@@ -63,10 +63,12 @@ class SPIComBaseTestEnv(Bench):
                                    "type": "hardware"
                                },
                                "1": {"nick": "master",
+                                     "allowed_platforms": ["K66F"],
                                      "application": {
                                        "name": "TEST_APPS-device-spi_master"
                                    }},
                                "2": {"nick": "slave",
+                                     "allowed_platforms": ["NUCLEO_F429ZI"],
                                      "application": {
                                        "name": "TEST_APPS-device-spi_slave"
                                    }}

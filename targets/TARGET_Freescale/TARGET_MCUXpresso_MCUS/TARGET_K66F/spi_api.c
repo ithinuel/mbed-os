@@ -313,7 +313,7 @@ void spi_get_capabilities(SPIName name, PinName ssel, spi_capabilities_t *cap)
 {
     cap->word_length = 0x00008080;
     cap->support_slave_mode = true;
-    cap->half_duplex = true;
+    cap->half_duplex = false;
 
     cap->minimum_frequency = 200000;
     cap->maximum_frequency = 4000000;
@@ -369,6 +369,7 @@ void spi_free(spi_t *obj)
     }
 }
 
+
 void spi_format(spi_t *obj, uint8_t bits, spi_mode_t mode, spi_bit_ordering_t bit_ordering)
 {
 
@@ -416,6 +417,18 @@ void spi_format(spi_t *obj, uint8_t bits, spi_mode_t mode, spi_bit_ordering_t bi
         DSPI_MasterInit(spi_address[obj->instance], &master_config, CLOCK_GetFreq(spi_clocks[obj->instance]));
     }
 
+    /* In case when clock idle high state is selected, the driver does not set the
+     * clk to high state after init, but just before first transmission.
+     * This causes problems since clk is down, when cs is asserted during the first transfer.
+     * This workaround transmits dummy symbol after inti, so the clk value is correctly set later.
+     */
+/*
+    if ((mode == SPI_MODE_IDLE_HIGH_SAMPLE_FIRST_EDGE) ||
+        (mode == SPI_MODE_IDLE_HIGH_SAMPLE_SECOND_EDGE)) {
+        uint8_t buf = 0;
+        spi_transfer(obj, &buf, 1, &buf, 1, &buf);
+    }
+*/
     obj->initialised = true;
 }
 

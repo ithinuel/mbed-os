@@ -137,7 +137,7 @@ int test_init_slave(spi_t * obj, config_test_case_t *config)
             break;
     }
 
-    dump_config(config);
+    //dump_config(config);
 
     spi_init(obj, true, mosi, miso, SPI_CLK, SPI_SS);
 
