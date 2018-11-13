@@ -122,19 +122,15 @@ int test_init_slave(spi_t * obj, config_test_case_t *config)
     PinName miso = SPI_MISO;
     PinName mosi = SPI_MOSI;
 
-    /* Adapt Full duplex/Half duplex settings. */
-    switch (config->duplex)
-    {
-        case HALF_DUPLEX_MOSI:
+    /* Adapt Half Duplex settings. */
+    if (config->duplex == HALF_DUPLEX) {
+        if (SPI_HF_DATA == SPI_MOSI) {
             miso = NC;
-            break;
-
-        case HALF_DUPLEX_MISO:
+        } else if (SPI_HF_DATA == SPI_MISO) {
             mosi = NC;
-            break;
-
-        default:
-            break;
+        } else {
+            printf("ERROR: Slave init in half duplex mode. \r\n ");
+        }
     }
 
     //dump_config(config);

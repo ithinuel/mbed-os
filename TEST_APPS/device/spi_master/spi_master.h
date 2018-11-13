@@ -119,19 +119,15 @@ int test_init_master(spi_t * obj, config_test_case_t *config, DigitalOut ** ss)
 
     spi_get_capabilities(spi_get_module(SPI_MOSI, SPI_MISO, SPI_CLK), NC, &capabilities);
 
-    /* Adapt Full Duplex/Half Duplex settings. */
-    switch (config->duplex)
-    {
-        case HALF_DUPLEX_MOSI:
+    /* Adapt Half Duplex settings. */
+    if (config->duplex == HALF_DUPLEX) {
+        if (SPI_HF_DATA == SPI_MOSI) {
             miso = NC;
-            break;
-
-        case HALF_DUPLEX_MISO:
+        } else if (SPI_HF_DATA == SPI_MISO) {
             mosi = NC;
-            break;
-
-        default:
-            break;
+        } else {
+            printf("ERROR: Master init in half duplex mode. \r\n ");
+        }
     }
 
     /* Adapt min/max frequency for testing based of capabilities. */

@@ -39,8 +39,7 @@ SPI_SYNC_MASTER_ASYNC_SLAVE = 1
 SPI_ASYNC_MASTER_ASYNC_SLAVE = 0
 
 FULL_DUPLEX = 0
-HALF_DUPLEX_MOSI = 1
-HALF_DUPLEX_MISO = 2
+HALF_DUPLEX = 1
 
 FREQ_MIN = 0
 FREQ_MAX = -1
@@ -63,12 +62,10 @@ class SPIComBaseTestEnv(Bench):
                                    "type": "hardware"
                                },
                                "1": {"nick": "master",
-                                     "allowed_platforms": ["K66F"],
                                      "application": {
                                        "name": "TEST_APPS-device-spi_master"
                                    }},
                                "2": {"nick": "slave",
-                                     "allowed_platforms": ["NUCLEO_F429ZI"],
                                      "application": {
                                        "name": "TEST_APPS-device-spi_slave"
                                    }}
@@ -97,8 +94,9 @@ class SPIComBaseTestEnv(Bench):
         resp_slave = self.command("slave", "validate_config %s" % config_str)
         
         if (not resp_master.verify_trace("SKIP", break_in_fail=False) and not resp_master.verify_trace("SKIP", break_in_fail=False)):
-            resp_master = self.command("master", "init_test")
             resp_slave = self.command("slave", "init_test")
+            resp_master = self.command("master", "init_test")
+
             
             async_cmd_slave = self.command("slave", "exec_test", asynchronous=True)
             resp_master = self.command("master", "exec_test", report_cmd_fail=False)
@@ -300,25 +298,19 @@ def SPI_COM_AUTO_SS(self):
     self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'true' , 'duplex': FULL_DUPLEX     ,'sync': SPI_SYNC_MASTER_SYNC_SLAVE  })
 
 @test_case(SPIComBaseTestEnv, 
-           name="SPI_COM_HALF_DUPLEX_MOSI",
-           title="half duplex on MOSI")
-def SPI_COM_HALF_DUPLEX_MOSI(self):
-    self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'false', 'duplex': HALF_DUPLEX_MOSI,'sync': SPI_SYNC_MASTER_SYNC_SLAVE  })
+           name="SPI_HALF_COM_DUPLEX",
+           title="half duplex transfer")
+def SPI_HALF_COM_DUPLEX(self):
+    self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'false', 'duplex': HALF_DUPLEX,'sync': SPI_SYNC_MASTER_SYNC_SLAVE  })
 
 @test_case(SPIComBaseTestEnv, 
-           name="SPI_COM_HALF_DUPLEX_MISO",
-           title="half duplex on MISO")
-def SPI_COM_HALF_DUPLEX_MISO(self):
-    self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'false', 'duplex': HALF_DUPLEX_MISO,'sync': SPI_SYNC_MASTER_SYNC_SLAVE  })
-
-@test_case(SPIComBaseTestEnv, 
-           name="SPI_COM_MASTER_ASYNC",
+           name="SPI_COM_ASYNC_MASTER",
            title="master async mode")
-def SPI_COM_MASTER_ASYNC(self):
+def SPI_COM_ASYNC_MASTER(self):
     self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'false', 'duplex': FULL_DUPLEX     ,'sync': SPI_ASYNC_MASTER_SYNC_SLAVE })
 
 @test_case(SPIComBaseTestEnv, 
-           name="SPI_COM_SLAVE_ASYNC",
+           name="SPI_COM_ASYNC_SLAVE",
            title="slave async mode")
-def SPI_COM_SLAVE_ASYNC(self):
+def SPI_COM_ASYNC_SLAVE(self):
     self.perform_test({'symbol_size': 8, 'mode': SPI_MODE_IDLE_LOW_SAMPLE_FIRST_EDGE  , 'bit_ordering': SPI_BIT_ORDERING_MSB_FIRST, 'freq_hz': 1000000   , 'buffers': SPI_BUFFERS_EQUAL           , 'master_tx_defined': 'true' , 'master_rx_defined': 'true' , 'slave_tx_defined': 'true' , 'slave_rx_defined': 'true' , 'auto_ss': 'false', 'duplex': FULL_DUPLEX     ,'sync': SPI_SYNC_MASTER_ASYNC_SLAVE })

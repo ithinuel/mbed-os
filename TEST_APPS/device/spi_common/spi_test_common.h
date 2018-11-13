@@ -34,6 +34,7 @@
 #define SPI_MOSI MBED_CONF_APP_SPI_MASTER_MOSI
 #define SPI_CLK MBED_CONF_APP_SPI_MASTER_CLK
 #define SPI_SS MBED_CONF_APP_SPI_MASTER_CS
+#define SPI_HF_DATA MBED_CONF_APP_SPI_MASTER_HALF_DUPLEX_DATA
 #define TRANSMISSION_DELAY_MS MBED_CONF_APP_SPI_MASTER_DELAY
 #define TRANSMISSION_BUTTON MBED_CONF_APP_SPI_MASTER_TRANSMISSION_START_BTN
 #define TRANSMISSION_LED MBED_CONF_APP_SPI_MASTER_TRANSMISSION_START_LED
@@ -43,6 +44,7 @@
 #define SPI_MOSI MBED_CONF_APP_SPI_SLAVE_MOSI
 #define SPI_CLK MBED_CONF_APP_SPI_SLAVE_CLK
 #define SPI_SS MBED_CONF_APP_SPI_SLAVE_CS
+#define SPI_HF_DATA MBED_CONF_APP_SPI_SLAVE_HALF_DUPLEX_DATA
 #define TRANSMISSION_DELAY_MS MBED_CONF_APP_SPI_SLAVE_DELAY
 #define TRANSMISSION_DELAY_MASTER_MS MBED_CONF_APP_SPI_MASTER_DELAY
 #define TRANSMISSION_BUTTON MBED_CONF_APP_SPI_SLAVE_TRANSMISSION_START_BTN
@@ -54,8 +56,7 @@
 typedef enum
 {
     FULL_DUPLEX,
-    HALF_DUPLEX_MOSI,
-    HALF_DUPLEX_MISO
+    HALF_DUPLEX
 } duplex_t;
 
 /* Buffer cases for testing. */
@@ -529,6 +530,9 @@ void transfer_thread(void * thread_params)
 {
     int status = CMDLINE_RETCODE_SUCCESS;
     trans_thread_params_t *params = (trans_thread_params_t*) thread_params;
+
+
+
 
     if (params->config->symbol_size <= 8) {
         status = perform_transfer<uint8_t>(params->obj, params->config, params->ss);
