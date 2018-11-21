@@ -82,6 +82,7 @@ struct spi_s {
     uint8_t transfer_type;
     spi_async_handler_f handler;
     void *ctx;
+    uint16_t fill_symbol;
     struct buffer_s tx_buff;
     struct buffer_s rx_buff;
 #endif

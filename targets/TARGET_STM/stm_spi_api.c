@@ -581,6 +581,13 @@ static void spi_master_start_asynch_transfer(spi_t *obj, transfer_type_t transfe
     struct spi_s *spiobj = SPI_S(obj);
     SPI_HandleTypeDef *handle = &(spiobj->handle);
     bool is16bit = (handle->Init.DataSize == SPI_DATASIZE_16BIT);
+
+    if (is16bit) {
+        obj->fill_symbol = *(uint16_t *)fill_symbol;
+    } else {
+        obj->fill_symbol = *(uint8_t *)fill_symbol;
+    }
+
     // the HAL expects number of transfers instead of number of bytes
     // so for 16 bit transfer width the count needs to be halved
     size_t words;
@@ -613,7 +620,7 @@ static void spi_master_start_asynch_transfer(spi_t *obj, transfer_type_t transfe
         case SPI_TRANSFER_TYPE_RX:
             // the receive function also "transmits" the receive buffer so in order
             // to guarantee that 0xff is on the line, we explicitly memset it here
-            memset(rx, *(uint8_t*)fill_symbol, length);
+            memset(rx, *(uint8_t*)fill_symbol, length); // this only works for 8 bit symbols though
             rc = HAL_SPI_Receive_IT(handle, (uint8_t *)rx, words);
             break;
         default:
@@ -637,8 +644,27 @@ static void spi_irq_handler(spi_t *obj)
         // quick & dirty max impl
 #define MAX(a, b) ((a>b)?(a):(b))
 #endif
+
+        obj->tx_buff.pos += obj->handle.TxXferSize;
+        obj->rx_buff.pos += obj->handle.RxXferSize;
+        bool is16bit = (obj->handle.Init.DataSize == SPI_DATASIZE_16BIT);
+
+        if (obj->tx_buff.pos != obj->tx_buff.length) {
+            uint16_t pos = obj->tx_buff.pos;
+            spi_master_start_asynch_transfer(obj, SPI_TRANSFER_TYPE_TX,
+                    ((uint8_t *)obj->tx_buff.buffer) + (pos * (is16bit?16:8)), NULL,
+                    obj->tx_buff.length - obj->tx_buff.pos, &obj->fill_symbol);
+            return;
+        } else if (obj->rx_buff.pos != obj->rx_buff.length) {
+            uint16_t pos = obj->rx_buff.pos;
+            spi_master_start_asynch_transfer(obj, SPI_TRANSFER_TYPE_RX,
+                    NULL, ((uint8_t *)obj->rx_buff.buffer) + (pos * (is16bit?16:8)),
+                    obj->rx_buff.length - obj->rx_buff.pos, &obj->fill_symbol);
+            return;
+        }
+
         spi_async_event_t event = {
-            .transfered = MAX(obj->handle.TxXferSize, obj->handle.RxXferSize),
+            .transfered = MAX(obj->tx_buff.pos, obj->rx_buff.pos),
             .error = (error != HAL_SPI_ERROR_NONE)
         };
         spi_async_handler_f handler = obj->handler;
@@ -691,15 +717,8 @@ bool spi_transfer_async(spi_t *obj, const void *tx, uint32_t tx_length, void *rx
 
     DEBUG_PRINTF("SPI: Transfer: %lu, %lu\n", tx_length, rx_length);
 
-    // enable the right hal transfer
     if (use_tx && use_rx) {
-        // we cannot manage different rx / tx sizes, let's use smaller one
-        size_t size = (tx_length < rx_length) ? tx_length : rx_length;
-        if (tx_length != rx_length) {
-            DEBUG_PRINTF("SPI: Full duplex transfer only 1 size: %u\n", size);
-            obj->tx_buff.length = size;
-            obj->rx_buff.length = size;
-        }
+        uint32_t size = (rx_length < tx_length)? rx_length : tx_length;
         spi_master_start_asynch_transfer(obj, SPI_TRANSFER_TYPE_TXRX, tx, rx, size, fill_symbol);
     } else if (use_tx) {
         spi_master_start_asynch_transfer(obj, SPI_TRANSFER_TYPE_TX, tx, NULL, tx_length, fill_symbol);

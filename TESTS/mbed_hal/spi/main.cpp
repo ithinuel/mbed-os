@@ -117,6 +117,7 @@ typedef struct {
     DigitalOut *ss;
     uint8_t bits;
     volatile uint32_t count; // test output
+    volatile bool has_error;
 } test_context_t;
 
 /* SPI test configuration. */
@@ -271,11 +272,13 @@ void fn_master(void *vctx) {
 void slave_handler(spi_t *obj, void *vctx, spi_async_event_t *event) {
     test_context_t *ctx = (test_context_t*)vctx;
     ctx->count = event->transfered;
+    ctx->has_error = event->error;
     join.release();
 }
 void master_handler(spi_t *obj, void *vctx, spi_async_event_t *event) {
     test_context_t *ctx = (test_context_t*)vctx;
     ctx->count = event->transfered;
+    ctx->has_error = event->error;
     join.release();
 }
 
@@ -485,8 +488,10 @@ void test_transfer_master()
     printf("m sent  : %.*s\n", master_ctx.tx_len, tx_master);
     printf("s recved: %.*s\n", slave_ctx.rx_len, rx_slave); // should used a "received" value here
     
-    TEST_ASSERT_EQUAL(master_symbols_clocked, slave_ctx.count);
-    TEST_ASSERT_EQUAL(slave_symbols_clocked, master_ctx.count);
+    TEST_ASSERT(!master_ctx.has_error);
+    TEST_ASSERT(!slave_ctx.has_error);
+    TEST_ASSERT_EQUAL(master_symbols_clocked, master_ctx.count);
+    TEST_ASSERT_EQUAL(slave_symbols_clocked, slave_ctx.count);
 
 #ifndef MIN
 #define MIN(a, b) (((a)>(b))?(b):(a))
