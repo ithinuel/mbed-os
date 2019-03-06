@@ -25,6 +25,8 @@
 #endif
 
 #include "mbed.h"
+#include "mbed_trace.h"
+#include "greentea_serial.h"
 #include "greentea-client/test_env.h"
 #include "unity/unity.h"
 #include "utest.h"
@@ -48,6 +50,7 @@ char tls_global::tx_buffer[TX_BUFF_SIZE];
 
 const char *tls_global::cert = \
                                "-----BEGIN CERTIFICATE-----\n"
+#if 1
                                "MIIEkjCCA3qgAwIBAgIQCgFBQgAAAVOFc2oLheynCDANBgkqhkiG9w0BAQsFADA/\n"
                                "MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\n"
                                "DkRTVCBSb290IENBIFgzMB4XDTE2MDMxNzE2NDA0NloXDTIxMDMxNzE2NDA0Nlow\n"
@@ -73,6 +76,27 @@ const char *tls_global::cert = \
                                "X4Po1QYz+3dszkDqMp4fklxBwXRsW10KXzPMTZ+sOPAveyxindmjkW8lGy+QsRlG\n"
                                "PfZ+G6Z6h7mjem0Y+iWlkYcV4PIWL1iwBi8saCbGS5jN2p8M+X+Q7UNKEkROb3N6\n"
                                "KOqkqm57TH2H3eDJAkSnh6/DNFu0Qg==\n"
+#else
+                               "MIIDazCCAlOgAwIBAgIUVGBWKzxMF3XKXPQajcA3zBtXYJ0wDQYJKoZIhvcNAQEL\n"
+                               "BQAwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoM\n"
+                               "GEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0xOTAyMjEwNjM1MTBaFw0yMDAy\n"
+                               "MjEwNjM1MTBaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEw\n"
+                               "HwYDVQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwggEiMA0GCSqGSIb3DQEB\n"
+                               "AQUAA4IBDwAwggEKAoIBAQCkrI6BVsKgJX3R8UEz7fUsJ8dao7qQU9LnT/IciwOh\n"
+                               "19ZtHuPP+w6wcwf1tn9aS5HCRNLSRx50zrTGzqd8MU16yxQm8qgQKxEnQWFHOE/u\n"
+                               "Z1U2FQAOvdjhUfnpW/IpsapmJqv/f+MIccFI5atIDtQqJacPUGxpqVrjDr9B/9/H\n"
+                               "sG72GdIObJ2kOBgGt0B/RwasXKAe94hEa1n619oUFE6i6a0gc2IFQCdSQHj8x+bd\n"
+                               "+LGKXfRjewFtpPDkunCMZJizITYSuVgHQxIyTIKLWQyzMOAHW6cPnRqntTroFT6s\n"
+                               "t6xdWNu9dUJVV6iVkfR6YTXYllxXut/TGawtY32c8kpBAgMBAAGjUzBRMB0GA1Ud\n"
+                               "DgQWBBQ0lfVq7E9KJduk5iSK3EoPFsFCdzAfBgNVHSMEGDAWgBQ0lfVq7E9KJduk\n"
+                               "5iSK3EoPFsFCdzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBb\n"
+                               "k4gA1QxxJjZn/vuBIkFa5CXQ/V1vT19qBdtRhftJtNFHB+jkLLnD0zHmlnhRLsG1\n"
+                               "SaI4inUCeI+z8rzctQpej3c2rf29SOlXHv4DuVTKUeZjtD2SwfzZ8EDh8bx4tT54\n"
+                               "Xrwzu6XaGvJI3Y+9ll7UnoPJEzT72rIppLr6sbdZCracixshTvhXM5YqocHrXV7q\n"
+                               "RW8ohNC8iPjPPJv+k6obDJyMWBpPcM8oRdvXpXhlXT2u7xeZDlda1CImpQu9M6HR\n"
+                               "r5V19YIONkh/tj+OZRFtN0+FRigX51eK4+grsGsNM4oUaZ6i4iDw+Q93AUchNUUv\n"
+                               "trcfnR8KbvxbN+J6QA3P\n"
+#endif
                                "-----END CERTIFICATE-----\n";
 
 void drop_bad_packets(TLSSocket &sock, int orig_timeout)
@@ -93,13 +117,13 @@ static void _ifup()
     NetworkInterface *net = NetworkInterface::get_default_instance();
     nsapi_error_t err = net->connect();
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, err);
-    printf("MBED: TLSClient IP address is '%s'\n", net->get_ip_address());
+    greentea_serial->printf("MBED: TLSClient IP address is '%s'\n", net->get_ip_address());
 }
 
 static void _ifdown()
 {
     NetworkInterface::get_default_instance()->disconnect();
-    printf("MBED: ifdown\n");
+    greentea_serial->printf("MBED: ifdown\n");
 }
 
 nsapi_error_t tlssocket_connect_to_srv(TLSSocket &sock, uint16_t port)
@@ -109,23 +133,23 @@ nsapi_error_t tlssocket_connect_to_srv(TLSSocket &sock, uint16_t port)
     NetworkInterface::get_default_instance()->gethostbyname(MBED_CONF_APP_ECHO_SERVER_ADDR, &tls_addr);
     tls_addr.set_port(port);
 
-    printf("MBED: Server '%s', port %d\n", tls_addr.get_ip_address(), tls_addr.get_port());
+    greentea_serial->printf("MBED: Server '%s', port %d\n", tls_addr.get_ip_address(), tls_addr.get_port());
 
     nsapi_error_t err = sock.set_root_ca_cert(tls_global::cert);
     if (err != NSAPI_ERROR_OK) {
-        printf("Error from sock.set_root_ca_cert: %d\n", err);
+        greentea_serial->printf("Error from sock.set_root_ca_cert: %d\n", err);
         return err;
     }
 
     err = sock.open(NetworkInterface::get_default_instance());
     if (err != NSAPI_ERROR_OK) {
-        printf("Error from sock.open: %d\n", err);
+        greentea_serial->printf("Error from sock.open: %d\n", err);
         return err;
     }
 
     err = sock.connect(tls_addr);
     if (err != NSAPI_ERROR_OK) {
-        printf("Error from sock.connect: %d\n", err);
+        greentea_serial->printf("Error from sock.connect: %d\n", err);
         return err;
     }
 
@@ -212,8 +236,17 @@ void run_test(void)
 }
 
 static unsigned char stack_mem[8192];
-int main()
-{
+static void my_mutex_wait() {
+    greentea_serial->lock();
+}
+static void my_mutex_release() {
+    greentea_serial->unlock();
+}
+
+int main() {
+    mbed_trace_mutex_wait_function_set(my_mutex_wait);
+    mbed_trace_mutex_release_function_set(my_mutex_release);
+    mbed_trace_init();
     Thread *th = new Thread(osPriorityNormal, 8192, stack_mem, "tls_gt_thread");
     th->start(callback(run_test));
     th->join();

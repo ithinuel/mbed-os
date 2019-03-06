@@ -72,7 +72,7 @@ void TCPSOCKET_ECHOTEST()
 
         sent = sock.send(tcp_global::tx_buffer, pkt_s);
         if (sent < 0) {
-            printf("[Round#%02d] network error %d\n", x, sent);
+            greentea_serial->printf("[Round#%02d] network error %d\n", x, sent);
             TEST_FAIL();
             TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, sock.close());
             return;
@@ -82,7 +82,7 @@ void TCPSOCKET_ECHOTEST()
         while (bytes2recv) {
             recvd = sock.recv(&(tcp_global::rx_buffer[sent - bytes2recv]), bytes2recv);
             if (recvd < 0) {
-                printf("[Round#%02d] network error %d\n", x, recvd);
+                greentea_serial->printf("[Round#%02d] network error %d\n", x, recvd);
                 TEST_FAIL();
                 TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, sock.close());
                 return;
@@ -117,7 +117,7 @@ void tcpsocket_echotest_nonblock_receive()
         if (!bytes2recv) {
             TEST_ASSERT_EQUAL(0, memcmp(tcp_global::tx_buffer, tcp_global::rx_buffer, bytes2recv_total));
             static int round = 0;
-            printf("[Recevr#%02d] bytes received: %d\n", round++, bytes2recv_total);
+            greentea_serial->printf("[Recevr#%02d] bytes received: %d\n", round++, bytes2recv_total);
             tx_sem.release();
             break;
         }
@@ -174,13 +174,13 @@ void TCPSOCKET_ECHOTEST_NONBLOCK()
                 }
                 continue;
             } else if (sent <= 0) {
-                printf("[Sender#%02d] network error %d\n", s_idx, sent);
+                greentea_serial->printf("[Sender#%02d] network error %d\n", s_idx, sent);
                 TEST_FAIL();
                 goto END;
             }
             bytes2send -= sent;
         }
-        printf("[Sender#%02d] bytes sent: %d\n", s_idx, pkt_s);
+        greentea_serial->printf("[Sender#%02d] bytes sent: %d\n", s_idx, pkt_s);
 #if MBED_CONF_NSAPI_SOCKET_STATS_ENABLE
         count = fetch_stats();
         for (j = 0; j < count; j++) {

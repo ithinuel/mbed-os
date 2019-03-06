@@ -25,6 +25,8 @@
 #endif
 
 #include "mbed.h"
+#include "mbed_trace.h"
+#include "greentea_serial.h"
 #include "greentea-client/test_env.h"
 #include "unity/unity.h"
 #include "utest.h"
@@ -71,13 +73,13 @@ static void _ifup()
     NetworkInterface *net = NetworkInterface::get_default_instance();
     nsapi_error_t err = net->connect();
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, err);
-    printf("MBED: TCPClient IP address is '%s'\n", net->get_ip_address());
+    greentea_serial->printf("MBED: TCPClient IP address is '%s'\n", net->get_ip_address());
 }
 
 static void _ifdown()
 {
     NetworkInterface::get_default_instance()->disconnect();
-    printf("MBED: ifdown\n");
+    greentea_serial->printf("MBED: ifdown\n");
 }
 
 nsapi_error_t tcpsocket_connect_to_srv(TCPSocket &sock, uint16_t port)
@@ -87,17 +89,17 @@ nsapi_error_t tcpsocket_connect_to_srv(TCPSocket &sock, uint16_t port)
     NetworkInterface::get_default_instance()->gethostbyname(MBED_CONF_APP_ECHO_SERVER_ADDR, &tcp_addr);
     tcp_addr.set_port(port);
 
-    printf("MBED: Server '%s', port %d\n", tcp_addr.get_ip_address(), tcp_addr.get_port());
+    greentea_serial->printf("MBED: Server '%s', port %d\n", tcp_addr.get_ip_address(), tcp_addr.get_port());
 
     nsapi_error_t err = sock.open(NetworkInterface::get_default_instance());
     if (err != NSAPI_ERROR_OK) {
-        printf("Error from sock.open: %d\n", err);
+        greentea_serial->printf("Error from sock.open: %d\n", err);
         return err;
     }
 
     err = sock.connect(tcp_addr);
     if (err != NSAPI_ERROR_OK) {
-        printf("Error from sock.connect: %d\n", err);
+        greentea_serial->printf("Error from sock.connect: %d\n", err);
         return err;
     }
 
@@ -180,7 +182,16 @@ Case cases[] = {
 
 Specification specification(greentea_setup, cases, greentea_teardown, greentea_continue_handlers);
 
-int main()
-{
+static void my_mutex_wait() {
+    greentea_serial->lock();
+}
+static void my_mutex_release() {
+    greentea_serial->unlock();
+}
+
+int main() {
+    mbed_trace_mutex_wait_function_set(my_mutex_wait);
+    mbed_trace_mutex_release_function_set(my_mutex_release);
+    mbed_trace_init();
     return !Harness::run(specification);
 }

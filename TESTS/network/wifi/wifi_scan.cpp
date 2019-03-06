@@ -32,15 +32,22 @@ void wifi_scan(void)
 
     int size = wifi->scan(ap, MBED_CONF_APP_MAX_SCAN_SIZE);
     TEST_ASSERT(size >= 1);
+    TEST_ASSERT(size <= MBED_CONF_APP_MAX_SCAN_SIZE);
 
     bool secure_found = false;
     bool unsecure_found = false;
 
-    char secure_bssid[6];
-    char unsecure_bssid[6];
+#ifdef MBED_CONF_APP_AP_MAC_SECURE || MBED_CONF_APP_AP_MAC_UNSECURE
     const char *coversion_string = "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx";
+#endif
+#ifdef MBED_CONF_APP_AP_MAC_SECURE
+    char secure_bssid[6];
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, sscanf(MBED_CONF_APP_AP_MAC_SECURE, coversion_string, &secure_bssid[0], &secure_bssid[1], &secure_bssid[2], &secure_bssid[3], &secure_bssid[4], &secure_bssid[5]), "Failed to convert ap-mac-secure from mbed_app.json");
+#endif
+#ifdef MBED_CONF_APP_AP_MAC_UNSECURE
+    char unsecure_bssid[6];
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, sscanf(MBED_CONF_APP_AP_MAC_UNSECURE, coversion_string, &unsecure_bssid[0], &unsecure_bssid[1], &unsecure_bssid[2], &unsecure_bssid[3], &unsecure_bssid[4], &unsecure_bssid[5]), "Failed to convert ap-mac-unsecure from mbed_app.json");
+#endif
 
     for (int i = 0; i < size; i++) {
         const char *ssid = ap[i].get_ssid();

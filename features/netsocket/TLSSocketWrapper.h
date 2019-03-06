@@ -250,6 +250,11 @@ private:
      */
     static int my_verify(void *data, mbedtls_x509_crt *crt, int depth, uint32_t *flags);
 
+    /**
+     * Key export callback from Mbed TLS
+     * This outputs the NSS key to copy into the NSS Key log used in wireshark's ssl deciphering.
+     */
+    static int my_key_export(void *p_expkey, const unsigned char *ms, const unsigned char *kb, size_t maclen, size_t keylen, size_t ivlen);
 #endif /* MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0 */
 
     /**

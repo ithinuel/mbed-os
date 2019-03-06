@@ -22,6 +22,8 @@
 #endif
 
 #include "mbed.h"
+#include "mbed_trace.h"
+#include "greentea_serial.h"
 #include "greentea-client/test_env.h"
 #include "unity.h"
 #include "utest.h"
@@ -90,17 +92,17 @@ void do_asynchronous_gethostbyname(const char hosts[][DNS_TEST_HOST_LEN], unsign
         TEST_ASSERT(data[i].result == NSAPI_ERROR_OK || data[i].result == NSAPI_ERROR_NO_MEMORY || data[i].result == NSAPI_ERROR_DNS_FAILURE || data[i].result == NSAPI_ERROR_TIMEOUT);
         if (data[i].result == NSAPI_ERROR_OK) {
             (*exp_ok)++;
-            printf("DNS: query \"%s\" => \"%s\"\n",
+            greentea_serial->printf("DNS: query \"%s\" => \"%s\"\n",
                    hosts[i], data[i].addr.get_ip_address());
         } else if (data[i].result == NSAPI_ERROR_DNS_FAILURE) {
             (*exp_dns_failure)++;
-            printf("DNS: query \"%s\" => DNS failure\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => DNS failure\n", hosts[i]);
         } else if (data[i].result == NSAPI_ERROR_TIMEOUT) {
             (*exp_timeout)++;
-            printf("DNS: query \"%s\" => timeout\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => timeout\n", hosts[i]);
         } else if (data[i].result == NSAPI_ERROR_NO_MEMORY) {
             (*exp_no_mem)++;
-            printf("DNS: query \"%s\" => no memory\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => no memory\n", hosts[i]);
         }
     }
 
@@ -124,19 +126,19 @@ void do_gethostbyname(const char hosts[][DNS_TEST_HOST_LEN], unsigned int op_cou
 
         if (err == NSAPI_ERROR_OK) {
             (*exp_ok)++;
-            printf("DNS: query \"%s\" => \"%s\"\n",
+            greentea_serial->printf("DNS: query \"%s\" => \"%s\"\n",
                    hosts[i], address.get_ip_address());
         } else if (err == NSAPI_ERROR_DNS_FAILURE) {
             (*exp_dns_failure)++;
-            printf("DNS: query \"%s\" => DNS failure\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => DNS failure\n", hosts[i]);
         } else if (err == NSAPI_ERROR_TIMEOUT) {
             (*exp_timeout)++;
-            printf("DNS: query \"%s\" => timeout\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => timeout\n", hosts[i]);
         } else if (err == NSAPI_ERROR_NO_MEMORY) {
             (*exp_no_mem)++;
-            printf("DNS: query \"%s\" => no memory\n", hosts[i]);
+            greentea_serial->printf("DNS: query \"%s\" => no memory\n", hosts[i]);
         } else {
-            printf("DNS: query \"%s\" => %d, unexpected answer\n", hosts[i], err);
+            greentea_serial->printf("DNS: query \"%s\" => %d, unexpected answer\n", hosts[i], err);
             TEST_ASSERT(err == NSAPI_ERROR_OK || err == NSAPI_ERROR_NO_MEMORY || err == NSAPI_ERROR_DNS_FAILURE || err == NSAPI_ERROR_TIMEOUT);
         }
     }
@@ -154,13 +156,13 @@ static void net_bringup()
     net = NetworkInterface::get_default_instance();
     nsapi_error_t err = net->connect();
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, err);
-    printf("MBED: IP address is '%s'\n", net->get_ip_address());
+    greentea_serial->printf("MBED: IP address is '%s'\n", net->get_ip_address());
 }
 
 static void net_bringdown()
 {
     NetworkInterface::get_default_instance()->disconnect();
-    printf("MBED: ifdown\n");
+    greentea_serial->printf("MBED: ifdown\n");
 }
 
 // Test setup
@@ -195,7 +197,16 @@ Case cases[] = {
 
 Specification specification(test_setup, cases, greentea_teardown, greentea_continue_handlers);
 
-int main()
-{
+static void my_mutex_wait() {
+    greentea_serial->lock();
+}
+static void my_mutex_release() {
+    greentea_serial->unlock();
+}
+
+int main() {
+    mbed_trace_mutex_wait_function_set(my_mutex_wait);
+    mbed_trace_mutex_release_function_set(my_mutex_release);
+    mbed_trace_init();
     return !Harness::run(specification);
 }

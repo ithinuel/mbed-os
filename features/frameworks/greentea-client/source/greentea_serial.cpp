@@ -21,3 +21,18 @@ GreenteaSerial::GreenteaSerial() : mbed::RawSerial(USBTX, USBRX, MBED_CONF_PLATF
     set_flow_control(SerialBase::RTSCTS, STDIO_UART_RTS, STDIO_UART_CTS);
 #endif
 }
+
+void GreenteaSerial::lock() {
+    _mutex.lock();
+}
+
+void GreenteaSerial::unlock() {
+    _mutex.unlock();
+}
+
+extern "C" void UnityPrintLock() {
+    greentea_serial->lock();
+}
+extern "C" void UnityPrintUnlock() {
+    greentea_serial->unlock();
+}

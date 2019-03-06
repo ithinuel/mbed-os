@@ -27,6 +27,11 @@
 #include "mbed_error.h"
 #include "Kernel.h"
 
+#if MBED_CONF_TLS_SOCKET_DEBUG_LEVEL > 0
+// this gives access to the randbytes field.
+#include "mbedtls/ssl_internal.h"
+#endif
+
 // This class requires Mbed TLS SSL/TLS client code
 #if defined(MBEDTLS_SSL_CLI_C)
 
@@ -197,6 +202,7 @@ nsapi_error_t TLSSocketWrapper::start_handshake(bool first_call)
     mbedtls_ssl_conf_verify(get_ssl_config(), my_verify, NULL);
     mbedtls_ssl_conf_dbg(get_ssl_config(), my_debug, NULL);
     mbedtls_debug_set_threshold(MBED_CONF_TLS_SOCKET_DEBUG_LEVEL);
+    mbedtls_ssl_conf_export_keys_cb(get_ssl_config(), my_key_export, this);
 #endif
 
     tr_debug("mbedtls_ssl_setup()");
@@ -270,7 +276,7 @@ nsapi_error_t TLSSocketWrapper::continue_handshake()
     char *buf = new char[buf_size];
     mbedtls_x509_crt_info(buf, buf_size, "\r    ",
                           mbedtls_ssl_get_peer_cert(&_ssl));
-    tr_debug("Server certificate:\r\n%s\r\n", buf);
+    tr_debug("Server certificate:\r\n%s\r", buf);
 
     uint32_t flags = mbedtls_ssl_get_verify_result(&_ssl);
     if (flags != 0) {
@@ -440,19 +446,36 @@ int TLSSocketWrapper::my_verify(void *data, mbedtls_x509_crt *crt, int depth, ui
     char *buf = new char[buf_size];
     (void) data;
 
-    tr_debug("\nVerifying certificate at depth %d:\n", depth);
+    tr_debug("\nVerifying certificate at depth %d:", depth);
     mbedtls_x509_crt_info(buf, buf_size - 1, "  ", crt);
     tr_debug("%s", buf);
 
     if (*flags == 0) {
-        tr_info("No verification issue for this certificate\n");
+        tr_info("No verification issue for this certificate");
     } else {
         mbedtls_x509_crt_verify_info(buf, buf_size, "  ! ", *flags);
-        tr_info("%s\n", buf);
+        tr_info("%s", buf);
     }
 
     delete[] buf;
 
+    return 0;
+}
+
+int TLSSocketWrapper::my_key_export(void *p_expkey, const unsigned char *ms, const unsigned char *kb, size_t maclen, size_t keylen, size_t ivlen) {
+    TLSSocketWrapper *that = static_cast<TLSSocketWrapper*>(p_expkey);
+    char master_key[97] = {0};
+    char randbytes[129] = {0};
+    for (uint32_t i = 0; i < 48; i++) {
+        snprintf(master_key + 2*i, 2, "%02x", ms[i]);
+    }
+    for (uint32_t i = 0; i < 64; i++) {
+        // TODO: this is ugly, mbed tls should probably export this as well to this callback or give an api to fetch this.
+        snprintf(randbytes + 2*i, 2, "%02x", that->_ssl.handshake->randbytes[i]);
+    }
+    // making this a warning helps pull attention and prints it even with minimum trace level.
+    // a warning also makes sense as you probably don't want to see that in production log.
+    tr_warn("NSS Keylog: CLIENT_RANDOM %s %s", randbytes, master_key);
     return 0;
 }
 

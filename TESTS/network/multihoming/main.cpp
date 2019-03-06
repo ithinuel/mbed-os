@@ -17,7 +17,8 @@
 
 #define WIFI 2
 #if !defined(MBED_CONF_TARGET_NETWORK_DEFAULT_INTERFACE_TYPE) || \
-    (MBED_CONF_TARGET_NETWORK_DEFAULT_INTERFACE_TYPE == WIFI && !defined(MBED_CONF_NSAPI_DEFAULT_WIFI_SSID))
+    (MBED_CONF_TARGET_NETWORK_DEFAULT_INTERFACE_TYPE == WIFI && !defined(MBED_CONF_NSAPI_DEFAULT_WIFI_SSID)) || \
+    !defined(DEVICE_EMAC)
 #error [NOT_SUPPORTED] No network configuration found for this target.
 #endif
 #ifndef MBED_CONF_APP_ECHO_SERVER_ADDR
@@ -25,6 +26,8 @@
 #endif
 
 #include "mbed.h"
+#include "mbed_trace.h"
+#include "greentea_serial.h"
 #include "greentea-client/test_env.h"
 #include "unity/unity.h"
 #include "utest.h"
@@ -58,15 +61,12 @@ NetworkInterface *get_interface()
 
 static void _ifup()
 {
-
-#if DEVICE_EMAC
     net = EthInterface::get_default_instance();
     nsapi_error_t err = net->connect();
     net->get_interface_name(interface_name[0]);
     interface_num++;
     TEST_ASSERT_EQUAL(NSAPI_ERROR_OK, err);
     printf("MBED: IP address is '%s' interface name %s\n", net->get_ip_address(), interface_name[0]);
-#endif
 #if defined(MBED_CONF_APP_WIFI_SECURE_SSID) || defined(MBED_CONF_APP_WIFI_UNSECURE_SSID)
     wifi = WiFiInterface::get_default_instance();
 
@@ -106,6 +106,7 @@ static void _ifup()
 static void _ifdown()
 {
     interface_num = 0;
+
     net->disconnect();
 #if defined(MBED_CONF_APP_WIFI_SECURE_SSID) || defined(MBED_CONF_APP_WIFI_UNSECURE_SSID)
     wifi->disconnect();
@@ -150,7 +151,16 @@ Case cases[] = {
 
 Specification specification(greentea_setup, cases, greentea_teardown, greentea_continue_handlers);
 
-int main()
-{
+static void my_mutex_wait() {
+    greentea_serial->lock();
+}
+static void my_mutex_release() {
+    greentea_serial->unlock();
+}
+
+int main() {
+    mbed_trace_mutex_wait_function_set(my_mutex_wait);
+    mbed_trace_mutex_release_function_set(my_mutex_release);
+    mbed_trace_init();
     return !Harness::run(specification);
 }
