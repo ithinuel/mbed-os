@@ -194,7 +194,10 @@ void CellularDevice::cellular_callback(nsapi_event_t ev, intptr_t ptr)
         if (ev == NSAPI_EVENT_CONNECTION_STATUS_CHANGE && ptr == NSAPI_STATUS_DISCONNECTED) {
             // we have been disconnected, reset state machine so that application can start connect sequence again
             if (_state_machine) {
-                _state_machine->reset();
+                CellularStateMachine::CellularState current, next;
+                if (!_state_machine->get_current_status(current, next)) {
+                    _state_machine->reset();
+                }
             }
         }
     }
